@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "santaane-api"
+version = "0.1.0"
+description = "Backend FastAPI for Santaane Platform"
+authors = ["Hamadou Ba <hamadou@example.com>"]
+readme = "README.md"
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.115.0"
+uvicorn = { extras = ["standard"], version = "^0.30.0" }
+sqlmodel = "^0.0.22"
+alembic = "^1.14.0"
+python-dotenv = "^1.0.1"
+psycopg2-binary = "^2.9.9"
+pyjwt = "^2.8.0"
+passlib = { extras = ["bcrypt"], version = "^1.7.4" }
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.0"
