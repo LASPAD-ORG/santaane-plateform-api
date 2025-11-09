@@ -1,0 +1,534 @@
+#!/bin/bash
+
+# Santaane Platform API - CLI Management Script
+# Usage: ./santaane [command]
+
+set -e
+
+# Colors and styles - Futuristic theme
+BOLD='\033[1m'
+DIM='\033[2m'
+ITALIC='\033[3m'
+UNDERLINE='\033[4m'
+
+# Cyberpunk color palette
+CYAN='\033[96m'
+MAGENTA='\033[95m'
+PURPLE='\033[38;5;141m'
+PINK='\033[38;5;213m'
+NEON_GREEN='\033[38;5;82m'
+NEON_BLUE='\033[38;5;51m'
+ORANGE='\033[38;5;214m'
+YELLOW='\033[38;5;226m'
+RED='\033[38;5;196m'
+GRAY='\033[38;5;240m'
+NC='\033[0m' # No Color
+
+# Project name
+PROJECT_NAME="SANTAANE API"
+VERSION="v1.0.0"
+
+# ASCII Art Banner
+print_banner() {
+    echo -e "${CYAN}${BOLD}"
+    cat << "EOF"
+    ╔═══════════════════════════════════════════════════════════╗
+    ║                                                           ║
+    ║   ███████╗ █████╗ ███╗   ██╗████████╗ █████╗  █████╗    ║
+    ║   ██╔════╝██╔══██╗████╗  ██║╚══██╔══╝██╔══██╗██╔══██╗   ║
+    ║   ███████╗███████║██╔██╗ ██║   ██║   ███████║███████║   ║
+    ║   ╚════██║██╔══██║██║╚██╗██║   ██║   ██╔══██║██╔══██║   ║
+    ║   ███████║██║  ██║██║ ╚████║   ██║   ██║  ██║██║  ██║   ║
+    ║   ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ║
+    ║                                                           ║
+    ║              Platform API Management Console              ║
+    ║                                                           ║
+    ╚═══════════════════════════════════════════════════════════╝
+EOF
+    echo -e "${NC}"
+}
+
+# Futuristic box drawing
+print_box_top() {
+    echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
+}
+
+print_box_middle() {
+    local text="$1"
+    local padding=$(( (60 - ${#text}) / 2 ))
+    printf "${PURPLE}║${NC}%*s${NEON_BLUE}${BOLD}%s${NC}%*s${PURPLE}║${NC}\n" $padding "" "$text" $padding ""
+}
+
+print_box_bottom() {
+    echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
+}
+
+# Function to print colored messages with icons
+print_success() {
+    echo -e "${NEON_GREEN}${BOLD}[✓]${NC} ${NEON_GREEN}$1${NC}"
+}
+
+print_info() {
+    echo -e "${NEON_BLUE}${BOLD}[→]${NC} ${CYAN}$1${NC}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}${BOLD}[⚠]${NC} ${ORANGE}$1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}${BOLD}[✗]${NC} ${RED}$1${NC}"
+}
+
+print_progress() {
+    echo -e "${MAGENTA}${BOLD}[◆]${NC} ${PINK}$1${NC}"
+}
+
+print_header() {
+    echo ""
+    print_box_top
+    print_box_middle "$1"
+    print_box_bottom
+    echo ""
+}
+
+# Function to check if Docker is running
+check_docker() {
+    if ! docker info > /dev/null 2>&1; then
+        print_error "Docker n'est pas en cours d'exécution!"
+        exit 1
+    fi
+}
+
+# Function to check if services are running
+check_running() {
+    if docker-compose ps | grep -q "santaane_api.*Up"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Show help
+show_help() {
+    clear
+    print_banner
+    echo -e "${GRAY}${DIM}                          Version $VERSION${NC}"
+    echo ""
+    print_box_top
+    print_box_middle "COMMANDES DISPONIBLES"
+    print_box_bottom
+    echo ""
+
+    echo -e "  ${NEON_BLUE}${BOLD}╔═══ 🚀 DÉMARRAGE & CONTRÔLE${NC}"
+    echo -e "  ${NEON_BLUE}║${NC}"
+    echo -e "  ${NEON_BLUE}║${NC}  ${CYAN}start${NC}, ${CYAN}run${NC}, ${CYAN}rd${NC}       ${GRAY}→${NC} Démarrer en mode détaché"
+    echo -e "  ${NEON_BLUE}║${NC}  ${CYAN}dev${NC}                  ${GRAY}→${NC} Démarrer avec logs en direct"
+    echo -e "  ${NEON_BLUE}║${NC}  ${CYAN}stop${NC}                 ${GRAY}→${NC} Arrêter tous les services"
+    echo -e "  ${NEON_BLUE}║${NC}  ${CYAN}restart${NC}              ${GRAY}→${NC} Redémarrer les services"
+    echo -e "  ${NEON_BLUE}║${NC}  ${CYAN}rebuild${NC}              ${GRAY}→${NC} Rebuild complet"
+    echo ""
+
+    echo -e "  ${PURPLE}${BOLD}╔═══ 📦 MIGRATIONS DATABASE${NC}"
+    echo -e "  ${PURPLE}║${NC}"
+    echo -e "  ${PURPLE}║${NC}  ${MAGENTA}migrate${NC}              ${GRAY}→${NC} Appliquer les migrations"
+    echo -e "  ${PURPLE}║${NC}  ${MAGENTA}makemigrations${NC}, ${MAGENTA}mk${NC}   ${GRAY}→${NC} Générer une migration"
+    echo -e "  ${PURPLE}║${NC}  ${MAGENTA}migration-history${NC}    ${GRAY}→${NC} Historique des migrations"
+    echo -e "  ${PURPLE}║${NC}  ${MAGENTA}migration-current${NC}    ${GRAY}→${NC} Migration actuelle"
+    echo -e "  ${PURPLE}║${NC}  ${MAGENTA}rollback${NC}             ${GRAY}→${NC} Annuler la dernière migration"
+    echo ""
+
+    echo -e "  ${NEON_GREEN}${BOLD}╔═══ 📊 LOGS & MONITORING${NC}"
+    echo -e "  ${NEON_GREEN}║${NC}"
+    echo -e "  ${NEON_GREEN}║${NC}  ${PINK}logs${NC}, ${PINK}voir${NC}           ${GRAY}→${NC} Logs de l'API"
+    echo -e "  ${NEON_GREEN}║${NC}  ${PINK}logs-db${NC}              ${GRAY}→${NC} Logs PostgreSQL"
+    echo -e "  ${NEON_GREEN}║${NC}  ${PINK}logs-all${NC}             ${GRAY}→${NC} Tous les logs"
+    echo ""
+
+    echo -e "  ${ORANGE}${BOLD}╔═══ 🗄️  BASE DE DONNÉES${NC}"
+    echo -e "  ${ORANGE}║${NC}"
+    echo -e "  ${ORANGE}║${NC}  ${YELLOW}db${NC}, ${YELLOW}psql${NC}             ${GRAY}→${NC} Connexion PostgreSQL"
+    echo -e "  ${ORANGE}║${NC}  ${YELLOW}db-reset${NC}             ${GRAY}→${NC} Réinitialiser la DB"
+    echo ""
+
+    echo -e "  ${CYAN}${BOLD}╔═══ 🔧 UTILITAIRES${NC}"
+    echo -e "  ${CYAN}║${NC}"
+    echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}shell${NC}                ${GRAY}→${NC} Shell dans le conteneur"
+    echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}test${NC}                 ${GRAY}→${NC} Lancer les tests"
+    echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}status${NC}, ${NEON_BLUE}ps${NC}           ${GRAY}→${NC} État des services"
+    echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}clean${NC}                ${GRAY}→${NC} Nettoyage complet"
+    echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}help${NC}                 ${GRAY}→${NC} Afficher cette aide"
+    echo ""
+
+    echo -e "${GRAY}${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GRAY}${DIM}  Exemple: ${NC}${CYAN}./santaane start${NC} ${GRAY}|${NC} ${MAGENTA}./santaane mk${NC} ${GRAY}|${NC} ${PINK}./santaane logs${NC}"
+    echo -e "${GRAY}${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+}
+
+# Start services in detached mode
+start_services() {
+    print_header "DÉMARRAGE DES SERVICES"
+    check_docker
+
+    if check_running; then
+        print_warning "Les services sont déjà en cours d'exécution"
+        print_info "Utilisez './santaane restart' pour redémarrer"
+    else
+        # Check if poetry.lock needs update
+        if [ -f "pyproject.toml" ]; then
+            print_progress "Vérification des dépendances Poetry..."
+
+            # Try to check if lock file is outdated (will fail silently if not)
+            if ! poetry check --lock 2>/dev/null; then
+                print_warning "poetry.lock est obsolète, mise à jour en cours..."
+                poetry lock
+                print_success "poetry.lock mis à jour !"
+            fi
+        fi
+
+        print_progress "Initialisation de Docker Compose..."
+        docker-compose up -d --build
+        echo ""
+        print_success "Services démarrés en mode détaché !"
+        echo ""
+        echo -e "${NEON_BLUE}${BOLD}  ┌─────────────────────────────────────────────┐${NC}"
+        echo -e "${NEON_BLUE}${BOLD}  │${NC}  ${CYAN}API${NC}       → ${NEON_GREEN}http://localhost:8000${NC}      ${NEON_BLUE}${BOLD}│${NC}"
+        echo -e "${NEON_BLUE}${BOLD}  │${NC}  ${CYAN}Docs${NC}      → ${NEON_GREEN}http://localhost:8000/docs${NC} ${NEON_BLUE}${BOLD}│${NC}"
+        echo -e "${NEON_BLUE}${BOLD}  │${NC}  ${CYAN}Database${NC}  → ${NEON_GREEN}localhost:5432${NC}             ${NEON_BLUE}${BOLD}│${NC}"
+        echo -e "${NEON_BLUE}${BOLD}  └─────────────────────────────────────────────┘${NC}"
+        echo ""
+        print_info "Utilisez ${MAGENTA}./santaane logs${NC} pour voir les logs"
+    fi
+}
+
+# Start services with logs
+start_dev() {
+    print_header "Démarrage en mode développement"
+    check_docker
+    print_info "Démarrage avec logs en direct..."
+    print_info "Appuyez sur Ctrl+C pour arrêter"
+    docker-compose up --build
+}
+
+# Stop services
+stop_services() {
+    print_header "Arrêt des services"
+    check_docker
+
+    if check_running; then
+        print_info "Arrêt des services..."
+        docker-compose down
+        print_success "Services arrêtés"
+    else
+        print_warning "Les services ne sont pas en cours d'exécution"
+    fi
+}
+
+# Restart services
+restart_services() {
+    print_header "Redémarrage des services"
+    check_docker
+    print_info "Redémarrage..."
+    docker-compose restart
+    print_success "Services redémarrés"
+}
+
+# Rebuild and restart
+rebuild_services() {
+    print_header "Rebuild des services"
+    check_docker
+    print_info "Arrêt des services..."
+    docker-compose down
+    print_info "Rebuild en cours..."
+    docker-compose up -d --build
+    print_success "Rebuild terminé et services redémarrés"
+}
+
+# Apply migrations
+apply_migrations() {
+    print_header "Application des migrations"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        print_info "Utilisez './santaane start' d'abord"
+        exit 1
+    fi
+
+    print_info "Application des migrations..."
+    docker-compose exec api poetry run alembic upgrade head
+    print_success "Migrations appliquées"
+}
+
+# Create new migration
+make_migrations() {
+    print_header "Génération d'une migration"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        print_info "Utilisez './santaane start' d'abord"
+        exit 1
+    fi
+
+    read -p "Nom de la migration (laisser vide pour générer automatiquement): " migration_name
+
+    if [ -z "$migration_name" ]; then
+        # Générer un nom automatique basé sur la date et l'heure
+        migration_name="auto_migration_$(date +%Y%m%d_%H%M%S)"
+        print_info "Nom automatique généré: $migration_name"
+    fi
+
+    print_info "Génération de la migration '$migration_name'..."
+    docker-compose exec api poetry run alembic revision --autogenerate -m "$migration_name"
+    print_success "Migration générée"
+}
+
+# Show migration history
+migration_history() {
+    print_header "Historique des migrations"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        exit 1
+    fi
+
+    docker-compose exec api poetry run alembic history
+}
+
+# Show current migration
+migration_current() {
+    print_header "Migration actuelle"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        exit 1
+    fi
+
+    docker-compose exec api poetry run alembic current
+}
+
+# Rollback migration
+rollback_migration() {
+    print_header "Rollback de migration"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        exit 1
+    fi
+
+    print_warning "Attention: Cette action va annuler la dernière migration"
+    read -p "Continuer? (y/N): " confirm
+
+    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+        print_info "Rollback en cours..."
+        docker-compose exec api poetry run alembic downgrade -1
+        print_success "Rollback effectué"
+    else
+        print_info "Rollback annulé"
+    fi
+}
+
+# View API logs
+view_logs() {
+    print_header "Logs de l'API"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        exit 1
+    fi
+
+    print_info "Affichage des logs (Ctrl+C pour quitter)..."
+    docker-compose logs -f api
+}
+
+# View DB logs
+view_db_logs() {
+    print_header "Logs de PostgreSQL"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        exit 1
+    fi
+
+    print_info "Affichage des logs (Ctrl+C pour quitter)..."
+    docker-compose logs -f db
+}
+
+# View all logs
+view_all_logs() {
+    print_header "Tous les logs"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        exit 1
+    fi
+
+    print_info "Affichage des logs (Ctrl+C pour quitter)..."
+    docker-compose logs -f
+}
+
+# Connect to PostgreSQL
+connect_db() {
+    print_header "Connexion à PostgreSQL"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        exit 1
+    fi
+
+    print_info "Connexion à la base de données..."
+    print_info "Pour quitter: tapez \\q"
+    docker-compose exec db psql -U postgres -d santaane
+}
+
+# Reset database
+reset_db() {
+    print_header "Réinitialisation de la base de données"
+    check_docker
+
+    print_warning "ATTENTION: Cette action va SUPPRIMER toutes les données!"
+    read -p "Êtes-vous sûr? Tapez 'RESET' pour confirmer: " confirm
+
+    if [ "$confirm" = "RESET" ]; then
+        print_info "Arrêt des services..."
+        docker-compose down
+        print_info "Suppression du volume de la base de données..."
+        docker volume rm santaane-plateform-api_pgdata 2>/dev/null || true
+        print_info "Redémarrage des services..."
+        docker-compose up -d --build
+        print_success "Base de données réinitialisée"
+    else
+        print_info "Réinitialisation annulée"
+    fi
+}
+
+# Open shell in API container
+open_shell() {
+    print_header "Shell du conteneur API"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        exit 1
+    fi
+
+    print_info "Ouverture du shell (tapez 'exit' pour quitter)..."
+    docker-compose exec api /bin/bash
+}
+
+# Run tests
+run_tests() {
+    print_header "Exécution des tests"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        exit 1
+    fi
+
+    print_info "Lancement des tests..."
+    docker-compose exec api poetry run pytest -v
+}
+
+# Show status
+show_status() {
+    print_header "État des services"
+    check_docker
+    docker-compose ps
+}
+
+# Clean everything
+clean_all() {
+    print_header "Nettoyage complet"
+    check_docker
+
+    print_warning "Cette action va arrêter les services et supprimer les volumes"
+    read -p "Continuer? (y/N): " confirm
+
+    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+        print_info "Nettoyage en cours..."
+        docker-compose down -v
+        print_success "Nettoyage terminé"
+    else
+        print_info "Nettoyage annulé"
+    fi
+}
+
+# Main command handler
+case "${1:-help}" in
+    start|run|rd)
+        start_services
+        ;;
+    dev)
+        start_dev
+        ;;
+    stop)
+        stop_services
+        ;;
+    restart)
+        restart_services
+        ;;
+    rebuild)
+        rebuild_services
+        ;;
+    migrate)
+        apply_migrations
+        ;;
+    makemigrations|mk)
+        make_migrations
+        ;;
+    migration-history)
+        migration_history
+        ;;
+    migration-current)
+        migration_current
+        ;;
+    rollback)
+        rollback_migration
+        ;;
+    logs|voir)
+        view_logs
+        ;;
+    logs-db)
+        view_db_logs
+        ;;
+    logs-all)
+        view_all_logs
+        ;;
+    db|psql)
+        connect_db
+        ;;
+    db-reset)
+        reset_db
+        ;;
+    shell)
+        open_shell
+        ;;
+    test)
+        run_tests
+        ;;
+    status|ps)
+        show_status
+        ;;
+    clean)
+        clean_all
+        ;;
+    help|-h|--help)
+        show_help
+        ;;
+    *)
+        print_error "Commande inconnue: $1"
+        echo ""
+        show_help
+        exit 1
+        ;;
+esac
