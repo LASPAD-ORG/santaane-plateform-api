@@ -319,12 +319,133 @@ santaane-plateform-api/
 ├── alembic/
 │   └── versions/                   # Migrations de base de données
 ├── tests/                          # Tests unitaires et d'intégration
+├── dumps/                          # 🚫 Dumps de base de données (gitignore)
+├── seeders/                        # 🚫 Fichiers JSON pour seeding (gitignore)
 ├── docker-compose.yml              # Configuration Docker Compose
 ├── Dockerfile                      # Image Docker de l'API
 ├── entrypoint.sh                   # Script de démarrage du conteneur
 ├── pyproject.toml                  # Dépendances Poetry
 ├── santaane                        # 🪄 CLI de gestion du projet
 └── README.md
+```
+
+---
+
+## Dossiers de données (exclus de Git)
+
+### 📁 dumps/
+
+**Rôle** : Stocke les backups (dumps) de la base de données PostgreSQL.
+
+**Structure** :
+```
+dumps/
+├── 20251110_170530/
+│   └── santaane_dump.sql (2.3M)
+├── 20251110_153000/
+│   └── santaane_dump.sql (1.8M)
+└── 20251109_120000/
+    └── santaane_dump.sql (1.5M)
+```
+
+**Utilisation** :
+
+```bash
+# Créer un dump de la base de données
+./santaane db-dump
+
+# Restaurer un dump (sélection interactive)
+./santaane db-restore
+```
+
+**Notes** :
+- ✅ Chaque dump est horodaté automatiquement
+- ✅ Les dumps sont organisés par dossier avec timestamp
+- 🚫 Exclus de Git pour éviter de versionner les données
+- 💡 Utile pour backups avant déploiement ou tests
+
+---
+
+### 📁 seeders/
+
+**Rôle** : Contient les fichiers JSON pour peupler la base de données (pays, villes, etc.).
+
+**Structure recommandée** :
+```
+seeders/
+├── countries.json          # Liste des pays
+├── cities.json             # Liste des villes
+└── users_test.json         # Utilisateurs de test (optionnel)
+```
+
+**Format des fichiers JSON** :
+
+**countries.json** :
+```json
+[
+  {
+    "name": "Senegal",
+    "alpha-2": "SN",
+    "alpha-3": "SEN"
+  },
+  {
+    "name": "France",
+    "alpha-2": "FR",
+    "alpha-3": "FRA"
+  }
+]
+```
+
+**cities.json** :
+```json
+[
+  {
+    "name": "Dakar",
+    "country": "SN"
+  },
+  {
+    "name": "Paris",
+    "country": "FR"
+  }
+]
+```
+
+**Utilisation** :
+
+```bash
+# Peupler les pays depuis un fichier JSON
+./santaane seed-countries
+# → Le CLI demandera le chemin : seeders/countries.json
+
+# Peupler les villes depuis un fichier JSON
+./santaane seed-cities
+# → Le CLI demandera le chemin : seeders/cities.json
+```
+
+**Notes** :
+- ✅ Les seeders vérifient les doublons avant insertion
+- ✅ Format JSON flexible (supporte différentes structures)
+- 🚫 Exclus de Git pour éviter de versionner les données de test
+- 💡 Pratique pour initialiser une nouvelle instance ou environnement de dev
+- 💡 Vous pouvez télécharger des données depuis [REST Countries API](https://restcountries.com/) ou autres sources
+
+**Exemple complet** :
+
+```bash
+# 1. Créer le dossier
+mkdir -p seeders
+
+# 2. Télécharger ou créer vos fichiers JSON
+# Exemple : https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes
+wget -O seeders/countries.json https://example.com/countries.json
+
+# 3. Lancer le seeding
+./santaane seed-countries
+# Entrer : seeders/countries.json
+
+# 4. Vérifier dans la base de données
+./santaane db
+# SELECT * FROM countries;
 ```
 
 ---
