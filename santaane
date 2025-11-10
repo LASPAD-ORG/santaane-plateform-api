@@ -381,8 +381,8 @@ clear_alembic_version() {
             print_success "Table alembic_version vidée avec succès!"
             echo ""
             echo -e "${NEON_BLUE}${BOLD}Prochaines étapes:${NC}"
-            echo -e "${CYAN}  1. Supprimez le dossier alembic/versions/${NC}"
-            echo -e "${CYAN}  2. Créez une nouvelle migration: ${MAGENTA}./santaane mk \"initial\"${NC}"
+            echo -e "${CYAN}  1. Supprimez les fichiers du dossier alembic/versions/${NC}"
+            echo -e "${CYAN}  2. Créez une nouvelle migration: ${MAGENTA}./santaane mk ${NC}"
             echo -e "${CYAN}  3. Appliquez la migration: ${MAGENTA}./santaane migrate${NC}"
             echo ""
         else

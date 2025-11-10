@@ -23,7 +23,6 @@ API backend moderne et performante pour la plateforme Santaane, construite avec 
 - [Migrations de base de données](#-migrations-de-base-de-données)
 - [API Documentation](#-api-documentation)
 - [Tests](#-tests)
-- [Déploiement](#-déploiement)
 
 ---
 
@@ -94,11 +93,6 @@ Avant de commencer, assurez-vous d'avoir installé :
 - **Docker Compose** (version 2.0+)
 - **Git**
 
-Pour le développement local sans Docker :
-- **Python** 3.10+
-- **Poetry** (gestionnaire de dépendances)
-- **PostgreSQL** 16
-
 ---
 
 ## 🚀 Installation
@@ -142,7 +136,7 @@ POSTGRES_PASSWORD=postgres
 POSTGRES_DB=santaane
 
 # JWT Authentication
-SECRET_KEY=your-secret-key-here-change-this-in-production  # ⚠️ À changer en production
+SECRET_KEY=your-secret-key-here-change-this
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 
@@ -161,9 +155,9 @@ DEFAULT_PAGE_SIZE=20
 MAX_PAGE_SIZE=100
 ```
 
-### 🔐 Générer une clé secrète sécurisée
+### 🔐 Générer une clé secrète
 
-Pour la production, générez une clé secrète forte :
+Vous pouvez générer une clé secrète avec :
 
 ```bash
 openssl rand -hex 32
@@ -173,11 +167,9 @@ openssl rand -hex 32
 
 ## 🎯 Lancement du projet
 
-### Avec Docker (recommandé)
+Le projet utilise **Docker** exclusivement pour garantir un environnement de développement cohérent.
 
-Le projet inclut un CLI personnalisé appelé `santaane` pour gérer facilement le projet.
-
-#### Démarrer tous les services
+### 1. Démarrer tous les services
 
 ```bash
 ./santaane start    # Mode détaché (en arrière-plan)
@@ -191,29 +183,49 @@ L'API sera accessible sur :
 - **Documentation alternative (ReDoc)** : http://localhost:8000/redoc
 - **Base de données PostgreSQL** : localhost:5432
 
-#### Arrêter les services
+### 2. Peupler la base de données
+
+⚠️ **IMPORTANT** : Après le premier démarrage, vous devez soit :
+
+#### Option A : Utiliser les seeders (recommandé pour un nouveau projet)
+
+```bash
+# 1. Peupler les pays
+./santaane seed-countries
+# Fournir le chemin du fichier JSON (ex: slim-2.json)
+
+# 2. Peupler les villes
+./santaane seed-cities
+# Fournir le chemin du fichier JSON (ex: cities.json)
+```
+
+#### Option B : Restaurer un backup existant
+
+```bash
+./santaane db-restore
+# Sélectionner le dump à restaurer dans la liste
+```
+
+### 3. Vérifier que tout fonctionne
+
+```bash
+# Voir les logs
+./santaane logs
+
+# Vérifier l'état des services
+./santaane status
+```
+
+### Arrêter les services
 
 ```bash
 ./santaane stop
 ```
 
-#### Redémarrer les services
+### Redémarrer les services
 
 ```bash
 ./santaane restart
-```
-
-### Sans Docker (développement local)
-
-```bash
-# Installer les dépendances
-poetry install
-
-# Appliquer les migrations
-poetry run alembic upgrade head
-
-# Démarrer le serveur
-poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ---
@@ -638,17 +650,8 @@ Documentation alternative avec un design différent :
 ### Lancer les tests
 
 ```bash
-# Avec Docker
+# Lancer les tests
 ./santaane test
-
-# Sans Docker
-poetry run pytest
-
-# Avec verbosité
-poetry run pytest -v
-
-# Test spécifique
-poetry run pytest tests/test_auth.py
 ```
 
 ### Structure des tests
@@ -778,52 +781,6 @@ Le CLI vous proposera de sélectionner un dump disponible.
 ./santaane seed-cities
 # Puis fournir le chemin du fichier JSON (ex: cities.json)
 ```
-
----
-
-## 🚢 Déploiement
-
-### Variables d'environnement en production
-
-⚠️ **Important** : Modifiez ces valeurs pour la production !
-
-```bash
-# Générer une clé secrète forte
-SECRET_KEY=$(openssl rand -hex 32)
-
-# Désactiver le mode debug
-DEBUG=False
-ENVIRONMENT=production
-
-# URL de base de données production
-DATABASE_URL=postgresql+psycopg2://user:password@host:port/dbname
-
-# CORS - Uniquement vos domaines
-CORS_ORIGINS=https://yourdomain.com,https://api.yourdomain.com
-```
-
-### Recommandations de sécurité
-
-1. ✅ Utilisez une clé `SECRET_KEY` forte et unique
-2. ✅ Désactivez `DEBUG=False` en production
-3. ✅ Configurez CORS uniquement pour vos domaines
-4. ✅ Utilisez HTTPS
-5. ✅ Mettez à jour régulièrement les dépendances
-6. ✅ Utilisez des secrets manager (AWS Secrets Manager, Vault, etc.)
-7. ✅ Limitez les accès à la base de données
-8. ✅ Activez les logs d'audit
-9. ✅ Utilisez des politiques de mots de passe forts
-10. ✅ Mettez en place un rate limiting
-
-### Docker en production
-
-Pour la production, créez un `docker-compose.prod.yml` optimisé :
-
-- Désactivez les volumes de hot-reload
-- Utilisez des images optimisées
-- Configurez les ressources (CPU/Memory limits)
-- Ajoutez un reverse proxy (Nginx, Traefik)
-- Utilisez Docker secrets pour les credentials
 
 ---
 
