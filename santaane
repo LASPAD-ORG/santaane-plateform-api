@@ -136,6 +136,7 @@ show_help() {
     echo -e "  ${PURPLE}║${NC}  ${MAGENTA}migration-history${NC}    ${GRAY}→${NC} Historique des migrations"
     echo -e "  ${PURPLE}║${NC}  ${MAGENTA}migration-current${NC}    ${GRAY}→${NC} Migration actuelle"
     echo -e "  ${PURPLE}║${NC}  ${MAGENTA}rollback${NC}             ${GRAY}→${NC} Annuler la dernière migration"
+    echo -e "  ${PURPLE}║${NC}  ${RED}clear-alembic${NC}        ${GRAY}→${NC} ${RED}⚠️  Vider alembic_version (DANGER)${NC}"
     echo ""
 
     echo -e "  ${NEON_GREEN}${BOLD}╔═══ 📊 LOGS & MONITORING${NC}"
@@ -339,6 +340,57 @@ rollback_migration() {
         print_success "Rollback effectué"
     else
         print_info "Rollback annulé"
+    fi
+}
+
+# Clear alembic version table (DANGEROUS)
+clear_alembic_version() {
+    print_header "⚠️  VIDER LA TABLE ALEMBIC_VERSION"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        print_info "Utilisez './santaane start' d'abord"
+        exit 1
+    fi
+
+    echo ""
+    print_error "╔════════════════════════════════════════════════════════════╗"
+    print_error "║                    ⚠️  DANGER  ⚠️                          ║"
+    print_error "╚════════════════════════════════════════════════════════════╝"
+    echo ""
+    print_warning "Cette action va SUPPRIMER l'historique des migrations Alembic!"
+    echo ""
+    echo -e "${YELLOW}${BOLD}Conséquences:${NC}"
+    echo -e "${GRAY}  • Alembic ne saura plus quelles migrations ont été appliquées${NC}"
+    echo -e "${GRAY}  • Vous devrez recréer l'historique manuellement${NC}"
+    echo -e "${GRAY}  • Les données de la base NE SERONT PAS supprimées${NC}"
+    echo -e "${GRAY}  • Utile uniquement pour recommencer avec des migrations propres${NC}"
+    echo ""
+    print_warning "À n'utiliser que si vous savez ce que vous faites!"
+    echo ""
+
+    read -p "Êtes-vous ABSOLUMENT sûr? Tapez 'CLEAR-ALEMBIC' pour confirmer: " confirm
+
+    if [ "$confirm" = "CLEAR-ALEMBIC" ]; then
+        print_info "Vidage de la table alembic_version..."
+
+        docker-compose exec -T db psql -U postgres santaane -c "TRUNCATE TABLE alembic_version;" > /dev/null 2>&1
+
+        if [ $? -eq 0 ]; then
+            print_success "Table alembic_version vidée avec succès!"
+            echo ""
+            echo -e "${NEON_BLUE}${BOLD}Prochaines étapes:${NC}"
+            echo -e "${CYAN}  1. Supprimez le dossier alembic/versions/${NC}"
+            echo -e "${CYAN}  2. Créez une nouvelle migration: ${MAGENTA}./santaane mk \"initial\"${NC}"
+            echo -e "${CYAN}  3. Appliquez la migration: ${MAGENTA}./santaane migrate${NC}"
+            echo ""
+        else
+            print_error "Échec du vidage de la table alembic_version"
+            exit 1
+        fi
+    else
+        print_info "Opération annulée"
     fi
 }
 
@@ -1094,6 +1146,9 @@ case "${1:-help}" in
         ;;
     rollback)
         rollback_migration
+        ;;
+    clear-alembic)
+        clear_alembic_version
         ;;
     logs|voir)
         view_logs
