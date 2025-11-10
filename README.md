@@ -867,12 +867,6 @@ Ce projet est privé et propriétaire.
 
 ---
 
-## 👥 Auteurs
-
-- **Hamadou Ba** - Développeur principal
-
----
-
 ## 🆘 Support
 
 Pour toute question ou problème :
