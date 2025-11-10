@@ -149,6 +149,10 @@ show_help() {
     echo -e "  ${ORANGE}║${NC}"
     echo -e "  ${ORANGE}║${NC}  ${YELLOW}db${NC}, ${YELLOW}psql${NC}             ${GRAY}→${NC} Connexion PostgreSQL"
     echo -e "  ${ORANGE}║${NC}  ${YELLOW}db-reset${NC}             ${GRAY}→${NC} Réinitialiser la DB"
+    echo -e "  ${ORANGE}║${NC}  ${YELLOW}db-dump${NC}              ${GRAY}→${NC} Créer un dump de la DB"
+    echo -e "  ${ORANGE}║${NC}  ${YELLOW}db-restore${NC}           ${GRAY}→${NC} Restaurer un dump de la DB"
+    echo -e "  ${ORANGE}║${NC}  ${YELLOW}seed-countries${NC}       ${GRAY}→${NC} Peupler les pays depuis JSON"
+    echo -e "  ${ORANGE}║${NC}  ${YELLOW}seed-cities${NC}          ${GRAY}→${NC} Peupler les villes depuis JSON"
     echo ""
 
     echo -e "  ${CYAN}${BOLD}╔═══ 🔧 UTILITAIRES${NC}"
@@ -416,6 +420,141 @@ reset_db() {
     fi
 }
 
+# Dump database
+dump_db() {
+    print_header "Dump de la base de données"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        print_info "Utilisez './santaane start' d'abord"
+        exit 1
+    fi
+
+    # Create dumps directory with timestamp
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    DUMP_DIR="dumps/${TIMESTAMP}"
+    mkdir -p "$DUMP_DIR"
+
+    print_info "Création du dump dans $DUMP_DIR..."
+
+    # Dump the database
+    docker-compose exec -T db pg_dump -U postgres santaane > "$DUMP_DIR/santaane_dump.sql"
+
+    if [ $? -eq 0 ]; then
+        # Get dump size
+        DUMP_SIZE=$(du -h "$DUMP_DIR/santaane_dump.sql" | cut -f1)
+
+        print_success "Dump créé avec succès!"
+        echo ""
+        echo -e "${NEON_BLUE}${BOLD}  ┌─────────────────────────────────────────────┐${NC}"
+        echo -e "${NEON_BLUE}${BOLD}  │${NC}  ${CYAN}Fichier${NC}   → ${NEON_GREEN}$DUMP_DIR/santaane_dump.sql${NC}"
+        echo -e "${NEON_BLUE}${BOLD}  │${NC}  ${CYAN}Taille${NC}    → ${NEON_GREEN}${DUMP_SIZE}${NC}"
+        echo -e "${NEON_BLUE}${BOLD}  │${NC}  ${CYAN}Date${NC}      → ${NEON_GREEN}$(date '+%Y-%m-%d %H:%M:%S')${NC}"
+        echo -e "${NEON_BLUE}${BOLD}  └─────────────────────────────────────────────┘${NC}"
+        echo ""
+        print_info "Pour restaurer: ${MAGENTA}./santaane db-restore${NC}"
+    else
+        print_error "Échec de la création du dump"
+        rm -rf "$DUMP_DIR"
+        exit 1
+    fi
+}
+
+# Restore database from dump
+restore_db() {
+    print_header "Restauration de la base de données"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        print_info "Utilisez './santaane start' d'abord"
+        exit 1
+    fi
+
+    # Check if dumps directory exists
+    if [ ! -d "dumps" ]; then
+        print_error "Aucun dump trouvé (dossier 'dumps' n'existe pas)"
+        exit 1
+    fi
+
+    # List available dumps
+    print_info "Dumps disponibles:"
+    echo ""
+
+    DUMPS=($(ls -1dt dumps/*/ 2>/dev/null))
+
+    if [ ${#DUMPS[@]} -eq 0 ]; then
+        print_error "Aucun dump trouvé dans le dossier 'dumps'"
+        exit 1
+    fi
+
+    # Display dumps with index
+    for i in "${!DUMPS[@]}"; do
+        DUMP_NAME=$(basename "${DUMPS[$i]}")
+        DUMP_FILE="${DUMPS[$i]}santaane_dump.sql"
+
+        if [ -f "$DUMP_FILE" ]; then
+            DUMP_SIZE=$(du -h "$DUMP_FILE" | cut -f1)
+            echo -e "  ${NEON_BLUE}[$((i+1))]${NC} ${CYAN}$DUMP_NAME${NC} ${GRAY}(${DUMP_SIZE})${NC}"
+        fi
+    done
+
+    echo ""
+    echo -ne "${NEON_BLUE}Sélectionnez le dump à restaurer (1-${#DUMPS[@]}):${NC} "
+    read DUMP_INDEX
+
+    # Validate input
+    if ! [[ "$DUMP_INDEX" =~ ^[0-9]+$ ]] || [ "$DUMP_INDEX" -lt 1 ] || [ "$DUMP_INDEX" -gt ${#DUMPS[@]} ]; then
+        print_error "Sélection invalide"
+        exit 1
+    fi
+
+    SELECTED_DUMP="${DUMPS[$((DUMP_INDEX-1))]}santaane_dump.sql"
+
+    if [ ! -f "$SELECTED_DUMP" ]; then
+        print_error "Fichier de dump introuvable: $SELECTED_DUMP"
+        exit 1
+    fi
+
+    print_warning "ATTENTION: Cette action va ÉCRASER toutes les données actuelles!"
+    read -p "Continuer? (y/N): " confirm
+
+    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+        print_info "Restauration en cours..."
+
+        # Arrêter l'API pour libérer les connexions
+        print_info "Arrêt temporaire de l'API..."
+        docker-compose stop api
+
+        # Terminer toutes les connexions actives
+        docker-compose exec -T db psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'santaane' AND pid <> pg_backend_pid();" > /dev/null 2>&1
+
+        # Drop and recreate database
+        docker-compose exec -T db psql -U postgres -c "DROP DATABASE IF EXISTS santaane;" > /dev/null 2>&1
+        docker-compose exec -T db psql -U postgres -c "CREATE DATABASE santaane;" > /dev/null 2>&1
+
+        # Restore dump
+        print_info "Importation du dump..."
+        cat "$SELECTED_DUMP" | docker-compose exec -T db psql -U postgres santaane > /dev/null 2>&1
+
+        if [ $? -eq 0 ]; then
+            # Redémarrer l'API
+            print_info "Redémarrage de l'API..."
+            docker-compose start api
+
+            print_success "Base de données restaurée avec succès!"
+            print_info "N'oubliez pas d'appliquer les migrations si nécessaire: ${MAGENTA}./santaane migrate${NC}"
+        else
+            print_error "Échec de la restauration"
+            docker-compose start api
+            exit 1
+        fi
+    else
+        print_info "Restauration annulée"
+    fi
+}
+
 # Open shell in API container
 open_shell() {
     print_header "Shell du conteneur API"
@@ -450,6 +589,136 @@ show_status() {
     check_docker
     docker-compose ps
 }
+
+# Seed countries from a JSON file
+seed_countries() {
+    print_header "Peuplement des pays"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        print_info "Utilisez './santaane start' d'abord"
+        exit 1
+    fi
+
+    # Demander le chemin du fichier JSON
+    echo -ne "${NEON_BLUE}📂 Chemin du fichier JSON (ex: slim-2.json):${NC} "
+    read json_file
+
+    if [ ! -f "$json_file" ]; then
+        print_error "Fichier introuvable: $json_file"
+        exit 1
+    fi
+
+    print_progress "Lecture des données depuis $json_file..."
+
+    # Copier le fichier dans le conteneur API
+    docker cp "$json_file" santaane_api:/tmp/countries.json
+
+    print_progress "Insertion des pays dans la base de données..."
+
+    # Exécuter un script Python asynchrone à l'intérieur du conteneur API
+    docker-compose exec -T api poetry run python - << EOF
+import json
+import asyncio
+from sqlmodel import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db import engine
+from app.models.country import Country
+
+async def seed():
+    async with AsyncSession(engine) as session:
+        with open("/tmp/countries.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        for c in data:
+            name = c.get("name")
+            code = c.get("alpha-2") or c.get("alpha-3")
+            if not name:
+                continue
+
+            result = await session.execute(select(Country).where(Country.name == name))
+            existing = result.scalars().first()
+            if not existing:
+                session.add(Country(name=name, code=code))
+
+        await session.commit()
+        print(f"{len(data)} pays insérés ou mis à jour avec succès !")
+
+asyncio.run(seed())
+EOF
+
+    print_success "Peuplement terminé !"
+}
+
+# Seed cities from a JSON file
+seed_cities() {
+    print_header "Peuplement des villes"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        print_info "Utilisez './santaane start' d'abord"
+        exit 1
+    fi
+
+    # Demander le chemin du fichier JSON
+    echo -ne "${NEON_BLUE}📂 Chemin du fichier JSON (ex: cities.json):${NC} "
+    read json_file
+
+    if [ ! -f "$json_file" ]; then
+        print_error "Fichier introuvable: $json_file"
+        exit 1
+    fi
+
+    print_progress "Lecture des données depuis $json_file..."
+
+    # Copier le fichier dans le conteneur API
+    docker cp "$json_file" santaane_api:/tmp/cities.json
+
+    print_progress "Insertion des villes dans la base de données..."
+
+    # Script Python exécuté dans le conteneur
+    docker-compose exec -T api poetry run python - << EOF
+import json
+import asyncio
+from sqlmodel import select
+from app.models.city import City
+from app.models.country import Country
+from app.db import AsyncSessionLocal
+
+async def seed():
+    # Lire le JSON
+    with open("/tmp/cities.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Créer un mapping country_code -> country_id
+    async with AsyncSessionLocal() as session:
+        countries = await session.execute(select(Country))
+        country_map = {c.code: c.id for c in countries.scalars().all()}
+
+        batch = []
+        for c in data:
+            country_id = country_map.get(c["country"])
+            if country_id is None:
+                continue  # ignore si le pays n'existe pas
+            city = City(
+                name=c["name"],
+                country_id=country_id
+            )
+            batch.append(city)
+
+        session.add_all(batch)
+        await session.commit()
+        print(f"{len(batch)} villes insérées avec succès !")
+
+asyncio.run(seed())
+EOF
+
+    print_success "Peuplement terminé !"
+}
+
+
 
 # Clean everything
 clean_all() {
@@ -755,7 +1024,31 @@ def get_${entity_lower}_service(db: AsyncSession = Depends(get_db)) -> ${entity_
     repository = ${entity_name}Repository(db)
     return ${entity_name}Service(repository)
 EOF
-    print_success "  └─ 📄 utils.py"
+    print_success "  ├─ 📄 utils.py"
+
+    # Generate constants.py
+    cat > "app/modules/$module_name/constants.py" << EOF
+"""
+$module_name module - Constants and Enums
+Module-specific constants and enumerations
+"""
+from enum import Enum
+
+
+class ${entity_name}Status(str, Enum):
+    """$entity_name status enumeration"""
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    ARCHIVED = "archived"
+
+
+# Module-specific constants
+DEFAULT_${entity_upper}_PAGE_SIZE = 20
+MAX_${entity_upper}_PAGE_SIZE = 100
+
+# À compléter selon les besoins du module
+EOF
+    print_success "  └─ 📄 constants.py"
 
     echo ""
     echo -e "${NEON_GREEN}${BOLD}✨ Module '$module_name' créé avec succès!${NC}"
@@ -766,6 +1059,12 @@ EOF
 
 # Main command handler
 case "${1:-help}" in
+    seed-countries)
+    seed_countries
+    ;;
+    seed-cities)
+    seed_cities
+    ;;
     start|run|rd)
         start_services
         ;;
@@ -810,6 +1109,12 @@ case "${1:-help}" in
         ;;
     db-reset)
         reset_db
+        ;;
+    db-dump)
+        dump_db
+        ;;
+    db-restore)
+        restore_db
         ;;
     shell)
         open_shell

@@ -6,14 +6,11 @@ from enum import Enum
 
 
 class AuthErrorCode(str, Enum):
-    """
-    Error codes for authentication and authorization operations.
-    Used by auth routes, JWT handling, and user management.
-    """
+    """All codes in uppercase for consistency"""
 
     # Login/Authentication Errors
     INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
-    INVALID_USERNAME_OR_PASSWORD = "INVALID_USERNAME_OR_PASSWORD"
+    INVALID_EMAIL_OR_PASSWORD = "INVALID_EMAIL_OR_PASSWORD"
 
     # Token Errors
     TOKEN_EXPIRED = "TOKEN_EXPIRED"
@@ -26,9 +23,13 @@ class AuthErrorCode(str, Enum):
 
     # User Errors
     USER_NOT_FOUND = "USER_NOT_FOUND"
-    USERNAME_ALREADY_EXISTS = "USERNAME_ALREADY_EXISTS"
-    INVALID_USERNAME = "INVALID_USERNAME"
+    EMAIL_ALREADY_EXISTS = "EMAIL_ALREADY_EXISTS"
+    INVALID_EMAIL = "INVALID_EMAIL"
     INVALID_PASSWORD = "INVALID_PASSWORD"
+
+    # Location Errors
+    INVALID_COUNTRY_ID = "INVALID_COUNTRY_ID"
+    INVALID_CITY_ID = "INVALID_CITY_ID"
 
     # Permission Errors
     INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS"

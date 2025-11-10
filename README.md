@@ -206,12 +206,18 @@ Toutes les commandes sont détaillées ci-dessous.
 
 ### 🗄️ Base de données
 
-| Commande      | Description                                                                       |
-| ------------- | --------------------------------------------------------------------------------- |
-| `db` / `psql` | Ouvre une connexion interactive à PostgreSQL dans le conteneur.                   |
-| `db-reset`    | Réinitialise complètement la base de données (suppression de toutes les données). |
+| Commande          | Description                                                                       |
+| ----------------- | --------------------------------------------------------------------------------- |
+| `db` / `psql`     | Ouvre une connexion interactive à PostgreSQL dans le conteneur.                   |
+| `db-reset`        | Réinitialise complètement la base de données (suppression de toutes les données). |
+| `db-dump`         | Crée un dump de la base de données dans `dumps/YYYYMMDD_HHMMSS/`.                |
+| `db-restore`      | Restaure la base de données depuis un dump (sélection interactive).               |
+| `seed-countries`  | Peuple la table des pays depuis un fichier JSON.                                  |
+| `seed-cities`     | Peuple la table des villes depuis un fichier JSON.                                |
 
-> ⚠️ `db-reset` est irréversible. Le CLI demande une confirmation explicite `RESET`.
+> ⚠️ `db-reset` et `db-restore` sont irréversibles. Le CLI demande une confirmation explicite.
+>
+> 💡 Les dumps sont automatiquement sauvegardés dans le dossier `dumps/` avec horodatage et sont exclus de Git.
 
 ---
 
@@ -273,6 +279,101 @@ Après ça, ajoutez simplement le router dans `app/api/v1/router.py` et vous êt
 
 ---
 
+## Architecture du projet
+
+```
+santaane-plateform-api/
+├── app/
+│   ├── api/
+│   │   └── v1/
+│   │       └── router.py           # Router principal de l'API v1
+│   ├── core/
+│   │   ├── config.py               # Configuration de l'application
+│   │   ├── constants.py            # 🔥 Constantes communes à tous les modules
+│   │   ├── error_codes.py          # Codes d'erreur globaux
+│   │   ├── logging.py              # Configuration des logs
+│   │   └── security.py             # Sécurité et authentification
+│   ├── middleware/
+│   │   ├── exception_handler.py    # Gestion globale des exceptions
+│   │   ├── logging_middleware.py   # Middleware de logging
+│   │   └── cors.py                 # Configuration CORS
+│   ├── models/
+│   │   ├── user.py                 # Modèles SQLModel
+│   │   ├── country.py
+│   │   └── city.py
+│   ├── modules/
+│   │   └── auth/                   # Module d'authentification (exemple)
+│   │       ├── __init__.py
+│   │       ├── schemas.py
+│   │       ├── repository.py
+│   │       ├── service.py
+│   │       ├── routes.py
+│   │       ├── utils.py
+│   │       ├── error_codes.py
+│   │       └── constants.py        # 🔥 Constantes spécifiques au module
+│   ├── schemas/
+│   │   ├── base.py                 # Schémas de base
+│   │   └── error.py                # Schémas d'erreur
+│   ├── db.py                       # Configuration base de données
+│   └── main.py                     # Point d'entrée de l'application
+├── alembic/
+│   └── versions/                   # Migrations de base de données
+├── tests/                          # Tests unitaires et d'intégration
+├── docker-compose.yml              # Configuration Docker Compose
+├── Dockerfile                      # Image Docker de l'API
+├── entrypoint.sh                   # Script de démarrage du conteneur
+├── pyproject.toml                  # Dépendances Poetry
+├── santaane                        # 🪄 CLI de gestion du projet
+└── README.md
+```
+
+---
+
+## Script de démarrage (entrypoint.sh)
+
+Le fichier `entrypoint.sh` est le **point d'entrée** du conteneur Docker de l'API. Il s'exécute automatiquement au démarrage du conteneur et garantit que tout est prêt avant de lancer l'application.
+
+### Étapes d'exécution :
+
+1. **Attente de PostgreSQL** (30 tentatives max)
+   - Vérifie que PostgreSQL est accessible via `pg_isready`
+   - Attend jusqu'à ce que la connexion soit établie
+
+2. **Attente de PGBouncer**
+   - Pause de 3 secondes pour s'assurer que PGBouncer est prêt
+
+3. **Exécution des migrations**
+   - Lance automatiquement `alembic upgrade head`
+   - Applique toutes les migrations en attente
+   - Échoue si les migrations échouent (sécurité)
+
+4. **Démarrage de l'application**
+   - Lance Uvicorn avec FastAPI
+   - Mode hot-reload activé en développement (via `--reload`)
+
+### Utilisation dans Docker
+
+Le script est référencé dans le `Dockerfile` :
+```dockerfile
+ENTRYPOINT ["/app/entrypoint.sh"]
+```
+
+Et permet de passer des arguments supplémentaires via `docker-compose.yml` :
+```yaml
+command: ["--reload"]  # Active le hot-reload en dev
+```
+
+### Pourquoi ce script est important
+
+✅ **Migrations automatiques** : Plus besoin de les lancer manuellement
+✅ **Vérifications de santé** : S'assure que la DB est prête
+✅ **Démarrage fiable** : Évite les erreurs de connexion
+✅ **Zero downtime** : Applique les migrations avant de servir les requêtes
+
+> ⚠️ **Ne supprimez pas ce fichier** - il est essentiel au fonctionnement de l'application dans Docker.
+
+---
+
 ## Structure modulaire
 
 Chaque module suit cette structure standardisée :
@@ -284,7 +385,9 @@ app/modules/<module_name>/
 ├── repository.py       # Accès à la base de données
 ├── service.py          # Logique métier
 ├── routes.py           # Endpoints FastAPI
-└── utils.py            # Utilitaires spécifiques au module
+├── utils.py            # Utilitaires spécifiques au module
+├── error_codes.py      # Codes d'erreur du module
+└── constants.py        # 🔥 Constantes et enums du module
 ```
 
 ## Responsabilités
@@ -316,6 +419,33 @@ app/modules/<module_name>/
 ### utils.py
 - Fonctions utilitaires spécifiques au module
 - Helpers, validators, formatters, etc.
+
+### error_codes.py
+- Définit les codes d'erreur spécifiques au module
+- Utilise des enums pour garantir la cohérence
+- Exemple : `AuthErrorCode.INVALID_CREDENTIALS`
+
+### constants.py
+- **Constantes** : Valeurs fixes utilisées dans le module (toujours en MAJUSCULES)
+- **Enums** : Ensembles de valeurs possibles pour un champ
+- Centralise toutes les valeurs "magiques" du module
+- Facilite la maintenance et évite les duplications
+
+**Exemple** :
+```python
+from enum import Enum
+
+# Enums : valeurs possibles
+class UserStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+
+# Constantes : valeurs fixes (toujours en MAJUSCULES)
+MAX_LOGIN_ATTEMPTS = 5
+PASSWORD_MIN_LENGTH = 8
+SESSION_TIMEOUT_MINUTES = 30
+```
 
 ## Exemple : Créer un nouveau module "courses"
 
@@ -452,3 +582,317 @@ router.include_router(courses_router)
 4. **Routes = HTTP uniquement** (utilise service)
 5. **Schemas = Validation** (Pydantic)
 6. **Utils = Helpers** (fonctions utilitaires)
+7. **Constants = Valeurs fixes** (toujours en MAJUSCULES)
+8. **Error Codes = Enums** (codes d'erreur standardisés)
+
+---
+
+## Communication Backend ↔ Frontend
+
+### Format de communication
+
+**IMPORTANT** : Toute la communication entre le backend et le frontend se fait en **camelCase**.
+
+#### Requêtes (Frontend → Backend)
+Le frontend envoie toutes les données en **camelCase** :
+```json
+{
+  "email": "user@example.com",
+  "fullName": "John Doe",
+  "countryId": 1
+}
+```
+
+#### Réponses réussies (Backend → Frontend)
+Le backend retourne les données directement en **camelCase** :
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "fullName": "John Doe",
+  "countryName": "Senegal",
+  "createdAt": "2025-11-10T05:00:00",
+  "updatedAt": "2025-11-10T05:00:00"
+}
+```
+
+#### Réponses d'erreur (Backend → Frontend)
+En cas d'erreur, le backend retourne uniquement le code d'erreur en **camelCase** :
+```json
+{
+  "errorCode": "INVALID_CREDENTIALS"
+}
+```
+
+**Aucun autre champ** (`success`, `timestamp`, `path`, `message`) n'est inclus. Le frontend gère les erreurs basé uniquement sur le `errorCode`.
+
+---
+
+## Gestion des erreurs et exceptions
+
+### Format standardisé des erreurs
+
+**Toutes les erreurs** dans l'API retournent un format JSON simple et cohérent :
+
+```json
+{
+  "errorCode": "INVALID_CREDENTIALS"
+}
+```
+
+Pas de champ `success`, `timestamp`, `path` ou autres informations inutiles. Juste le code d'erreur en **camelCase** que le frontend peut gérer programmatiquement.
+
+### Types d'erreurs gérées
+
+| Type d'erreur | Status HTTP | Exemple |
+|---------------|-------------|---------|
+| **Validation** | 422 | `VALIDATION_ERROR` |
+| **Authentification** | 401 | `INVALID_CREDENTIALS` |
+| **Autorisation** | 403 | `INSUFFICIENT_PERMISSIONS` |
+| **Not Found** | 404 | `USER_NOT_FOUND` |
+| **Conflict** | 409 | `EMAIL_ALREADY_EXISTS` |
+| **Business Logic** | 400 | `INVALID_COUNTRY_ID` |
+| **Database** | 400 | `DATABASE_ERROR` |
+| **Serveur** | 500 | `INTERNAL_SERVER_ERROR` |
+
+### Hiérarchie des error codes
+
+#### 1. Codes globaux (`app/core/error_codes.py`)
+```python
+class GeneralErrorCode(str, Enum):
+    INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR"
+    DATABASE_ERROR = "DATABASE_ERROR"
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+    NOT_FOUND = "NOT_FOUND"
+    UNAUTHORIZED = "UNAUTHORIZED"
+```
+
+#### 2. Codes spécifiques aux modules (`app/modules/{module}/error_codes.py`)
+```python
+class AuthErrorCode(str, Enum):
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+    EMAIL_ALREADY_EXISTS = "EMAIL_ALREADY_EXISTS"
+    INVALID_COUNTRY_ID = "INVALID_COUNTRY_ID"
+    INVALID_CITY_ID = "INVALID_CITY_ID"
+```
+
+### Comment lever une exception
+
+Dans le **service** :
+```python
+from fastapi import HTTPException, status
+from app.modules.auth.error_codes import AuthErrorCode
+
+# Lever une erreur 400
+raise HTTPException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail=AuthErrorCode.INVALID_COUNTRY_ID
+)
+
+# Lever une erreur 404
+raise HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail=AuthErrorCode.USER_NOT_FOUND
+)
+
+# Lever une erreur 409
+raise HTTPException(
+    status_code=status.HTTP_409_CONFLICT,
+    detail=AuthErrorCode.EMAIL_ALREADY_EXISTS
+)
+```
+
+### Gestion automatique des exceptions
+
+L'application capture automatiquement **toutes les exceptions** via les middlewares :
+
+- **HTTPException** → Retourne le code d'erreur fourni
+- **RequestValidationError** → Retourne `VALIDATION_ERROR`
+- **IntegrityError / DBAPIError** → Retourne `DATABASE_ERROR`
+- **Exception (toutes les autres)** → Retourne `INTERNAL_SERVER_ERROR`
+
+Les **logs** contiennent tous les détails techniques pour le debugging, mais le client ne reçoit que le code d'erreur.
+
+---
+
+## Conventions de code et standards
+
+### 1. Nommage
+
+| Élément | Convention | Exemple |
+|---------|------------|---------|
+| **Variables** | snake_case | `user_id`, `email_address` |
+| **Fonctions** | snake_case | `get_user_by_id()`, `create_user()` |
+| **Classes** | PascalCase | `UserService`, `AuthRepository` |
+| **Constantes** | MAJUSCULES | `MAX_LOGIN_ATTEMPTS`, `DEFAULT_PAGE_SIZE` |
+| **Enums** | PascalCase | `UserStatus`, `AuthTokenType` |
+| **Fichiers** | snake_case | `user_service.py`, `error_codes.py` |
+| **Modules (dossiers)** | snake_case | `auth/`, `user_management/` |
+
+### 2. Communication API (camelCase obligatoire)
+
+**TOUTE la communication avec le frontend se fait en camelCase** :
+- Requêtes du frontend → camelCase
+- Réponses du backend → camelCase
+- Erreurs → `errorCode` (camelCase)
+
+**Le code Python utilise snake_case** en interne uniquement.
+
+**Exemple** :
+```python
+# Schéma Pydantic (API - camelCase)
+class UserCreate(BaseModel):
+    email: EmailStr
+    fullName: str          # camelCase pour l'API
+    countryId: Optional[int] = None
+
+# Modèle SQLModel (DB - snake_case)
+class User(SQLModel, table=True):
+    email: str
+    full_name: str         # snake_case en DB
+    country_id: Optional[int] = None
+
+# Transformation automatique dans le service
+UserResponse(
+    id=user.id,
+    email=user.email,
+    fullName=user.full_name,      # snake_case → camelCase
+    countryId=user.country_id      # snake_case → camelCase
+)
+```
+
+### 3. Constantes
+
+#### Constantes communes (`app/core/constants.py`)
+```python
+# Pagination
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 100
+
+# Password
+MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 128
+
+# Tokens
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
+```
+
+#### Constantes de module (`app/modules/auth/constants.py`)
+```python
+# JWT
+JWT_ALGORITHM = "HS256"
+JWT_TOKEN_PREFIX = "Bearer"
+
+# Security
+MAX_LOGIN_ATTEMPTS = 5
+ACCOUNT_LOCKOUT_DURATION_MINUTES = 15
+```
+
+### 4. Enums
+
+**Toujours hériter de `str` et `Enum`** :
+```python
+class UserStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+```
+
+### 5. Imports
+
+**Ordre des imports** :
+1. Bibliothèques standard Python
+2. Bibliothèques tierces (FastAPI, SQLModel, etc.)
+3. Imports locaux (app.*)
+
+**Exemple** :
+```python
+# Standard library
+from typing import Optional
+from datetime import datetime
+
+# Third-party
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+# Local
+from app.modules.auth.schemas import UserCreate, UserResponse
+from app.modules.auth.service import AuthService
+from app.modules.auth.error_codes import AuthErrorCode
+```
+
+### 6. Validation des données
+
+- **Validation de format** → Pydantic (dans `schemas.py`)
+- **Validation métier** → Service (dans `service.py`)
+- **Validation DB** → Repository ne fait AUCUNE validation
+
+**Exemple** :
+```python
+# schemas.py - Validation de format
+class UserCreate(BaseModel):
+    email: EmailStr                           # Valide le format email
+    password: str
+    countryId: Optional[int] = Field(None, gt=0)  # > 0
+
+# service.py - Validation métier
+async def register_user(self, user_data: UserCreate):
+    # Vérifier que l'email n'existe pas déjà
+    if await self.repository.user_exists(user_data.email):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=AuthErrorCode.EMAIL_ALREADY_EXISTS
+        )
+
+    # Vérifier que le pays existe
+    if user_data.countryId:
+        country = await self.repository.get_country_by_id(user_data.countryId)
+        if not country:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=AuthErrorCode.INVALID_COUNTRY_ID
+            )
+```
+
+### 7. Logging
+
+Utilisez le logger dans tous les services :
+```python
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
+# Logs informatifs
+logger.info(f"User registered successfully: {user.email}")
+
+# Logs d'avertissement
+logger.warning(f"Login failed for email: {credentials.email}")
+
+# Logs d'erreur
+logger.error(f"Database error: {str(e)}")
+```
+
+### 8. Documentation des endpoints
+
+**Toujours documenter les endpoints** :
+```python
+@router.post("/register", response_model=UserResponse, status_code=201)
+async def register(
+    user_data: UserCreate,
+    service: AuthService = Depends(get_auth_service)
+):
+    """
+    Register a new user
+
+    - **email**: Unique user email
+    - **password**: User password (min 8 chars)
+    - **fullName**: User's full name
+    - **countryId**: Optional country ID (must exist)
+    - **cityId**: Optional city ID (must exist)
+
+    Returns the created user with timestamps
+    """
+    return await service.register_user(user_data)
+```
+
+---

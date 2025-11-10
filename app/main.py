@@ -13,6 +13,7 @@ from app.core.logging import setup_logging, get_logger
 from app.middleware.exception_handler import (
     http_exception_handler,
     validation_exception_handler,
+    database_error_handler,
     general_exception_handler
 )
 from app.middleware.logging_middleware import LoggingMiddleware
@@ -46,9 +47,13 @@ app.add_middleware(LoggingMiddleware)
 
 # Register exception handlers
 from fastapi.exceptions import HTTPException
+from sqlalchemy.exc import IntegrityError, DBAPIError
+
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(ValidationError, validation_exception_handler)
+app.add_exception_handler(IntegrityError, database_error_handler)
+app.add_exception_handler(DBAPIError, database_error_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 # Include API v1 router

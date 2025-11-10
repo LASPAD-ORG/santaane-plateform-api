@@ -3,7 +3,6 @@ Auth module - Business logic service
 Handles authentication business logic
 """
 from fastapi import HTTPException, status
-
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.schemas import UserCreate, UserLogin, UserResponse, TokenResponse
 from app.modules.auth.error_codes import AuthErrorCode
@@ -20,68 +19,88 @@ class AuthService:
         self.repository = repository
 
     async def register_user(self, user_data: UserCreate) -> UserResponse:
-        """
-        Register a new user
+        """Register a new user (camelCase)"""
+        logger.info(f"Registration attempt for email: {user_data.email}")
 
-        Args:
-            user_data: User registration data
-
-        Returns:
-            UserResponse: Created user data
-
-        Raises:
-            ConflictError: If username already exists
-        """
-        logger.info(f"Registration attempt for username: {user_data.username}")
-
-        # Check if user already exists
-        if await self.repository.user_exists(user_data.username):
-            logger.warning(f"Registration failed: username '{user_data.username}' already exists")
+        if await self.repository.user_exists(user_data.email):
+            logger.warning(f"Registration failed: email '{user_data.email}' already exists")
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=AuthErrorCode.USERNAME_ALREADY_EXISTS
+                detail=AuthErrorCode.EMAIL_ALREADY_EXISTS
             )
 
-        # Hash password and create user
-        hashed_password = hash_password(user_data.password)
-        user = await self.repository.create_user(user_data.username, hashed_password)
+        # Validate country_id if provided
+        country_name = None
+        if user_data.countryId is not None:
+            country = await self.repository.get_country_by_id(user_data.countryId)
+            if not country:
+                logger.warning(f"Registration failed: invalid country_id {user_data.countryId}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=AuthErrorCode.INVALID_COUNTRY_ID
+                )
+            country_name = country.name
 
-        logger.info(f"User registered successfully: {user.username}")
+        # Validate city_id if provided
+        city_name = None
+        if user_data.cityId is not None:
+            city = await self.repository.get_city_by_id(user_data.cityId)
+            if not city:
+                logger.warning(f"Registration failed: invalid city_id {user_data.cityId}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=AuthErrorCode.INVALID_CITY_ID
+                )
+            city_name = city.name
+
+        hashed_password = hash_password(user_data.password)
+        user = await self.repository.create_user(
+            email=user_data.email,
+            full_name=user_data.fullName,
+            hashed_password=hashed_password,
+            country_id=user_data.countryId,
+            city_id=user_data.cityId,
+            timezone=user_data.timezone,
+            profile_photo=user_data.profilePhoto,
+            orcid_id=user_data.orcidId
+        )
+
+        logger.info(f"User registered successfully: {user.email}")
+
+        # Extract country and city names from loaded relationships
+        country_name = user.country.name if user.country else None
+        city_name = user.city.name if user.city else None
+
         return UserResponse(
             id=user.id,
-            username=user.username,
-            created_at=user.created_at,
-            updated_at=user.updated_at
+            email=user.email,
+            fullName=user.full_name,
+            countryName=country_name,
+            cityName=city_name,
+            timezone=user.timezone,
+            profilePhoto=user.profile_photo,
+            orcidId=user.orcid_id,
+            createdAt=user.created_at,
+            updatedAt=user.updated_at
         )
 
     async def login_user(self, credentials: UserLogin) -> TokenResponse:
-        """
-        Authenticate user and return JWT token
+        """Authenticate user and return JWT token (camelCase)"""
+        logger.info(f"Login attempt for email: {credentials.email}")
 
-        Args:
-            credentials: User login credentials
+        user = await self.repository.get_user_by_email(credentials.email)
 
-        Returns:
-            TokenResponse: JWT access token
-
-        Raises:
-            AuthenticationError: If credentials are invalid
-        """
-        logger.info(f"Login attempt for username: {credentials.username}")
-
-        # Find user
-        user = await self.repository.get_user_by_username(credentials.username)
-
-        # Verify credentials
-        if not user or not verify_password(credentials.password, user.hashed_password):
-            logger.warning(f"Login failed for username: {credentials.username}")
+        if not user or not verify_password(credentials.password, user.password_hash):
+            logger.warning(f"Login failed for email: {credentials.email}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=AuthErrorCode.INVALID_CREDENTIALS
             )
 
-        # Create access token
-        access_token = create_access_token(data={"sub": user.username})
+        access_token = create_access_token(data={"sub": user.email})
 
-        logger.info(f"Login successful for username: {user.username}")
-        return TokenResponse(access_token=access_token)
+        logger.info(f"Login successful for email: {user.email}")
+        return TokenResponse(
+            accessToken=access_token,
+            tokenType="bearer"
+        )

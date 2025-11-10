@@ -20,8 +20,6 @@ async def register(
     """
     Register a new user
 
-    - **username**: Unique username
-    - **password**: User password (will be hashed)
     """
     return await service.register_user(user_data)
 
@@ -32,13 +30,9 @@ async def login(
     service: AuthService = Depends(get_auth_service)
 ):
     """
-    Login user and return JWT token (OAuth2 compatible for Swagger UI)
+    Login a user and return a JWT token (OAuth2 compatible for Swagger UI)
 
-    - **username**: User's username
-    - **password**: User's password
-
-    Returns a JWT access token for authenticated requests
     """
     # Convert OAuth2PasswordRequestForm to UserLogin schema
-    credentials = UserLogin(username=form_data.username, password=form_data.password)
+    credentials = UserLogin(email=form_data.username, password=form_data.password)
     return await service.login_user(credentials)

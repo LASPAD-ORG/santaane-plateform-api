@@ -5,8 +5,10 @@ Handles all database operations for authentication
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-
+from sqlalchemy.orm import selectinload
 from app.models.user import User
+from app.models.country import Country
+from app.models.city import City
 
 
 class AuthRepository:
@@ -15,22 +17,62 @@ class AuthRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_user_by_username(self, username: str) -> Optional[User]:
-        """Get user by username"""
+    async def get_user_by_email(self, email: str) -> Optional[User]:
+        """Get user by email"""
         result = await self.db.execute(
-            select(User).where(User.username == username)
+            select(User).where(User.email == email)
         )
         return result.scalar_one_or_none()
 
-    async def create_user(self, username: str, hashed_password: str) -> User:
-        """Create a new user"""
-        user = User(username=username, hashed_password=hashed_password)
+    async def create_user(
+        self,
+        email: str,
+        full_name: str,
+        hashed_password: str,
+        country_id: Optional[int] = None,
+        city_id: Optional[int] = None,
+        timezone: Optional[str] = None,
+        profile_photo: Optional[str] = None,
+        orcid_id: Optional[str] = None,
+    ) -> User:
+        """Create a new user with relationships loaded"""
+        user = User(
+            email=email,
+            full_name=full_name,
+            password_hash=hashed_password,
+            country_id=country_id,
+            city_id=city_id,
+            timezone=timezone,
+            profile_photo=profile_photo,
+            orcid_id=orcid_id
+        )
         self.db.add(user)
         await self.db.commit()
         await self.db.refresh(user)
-        return user
 
-    async def user_exists(self, username: str) -> bool:
-        """Check if user exists by username"""
-        user = await self.get_user_by_username(username)
+        # Load relationships (country and city)
+        result = await self.db.execute(
+            select(User)
+            .options(selectinload(User.country), selectinload(User.city))
+            .where(User.id == user.id)
+        )
+        return result.scalar_one()
+
+    async def get_country_by_id(self, country_id: int) -> Optional[Country]:
+        """Get country by ID"""
+        result = await self.db.execute(
+            select(Country).where(Country.id == country_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_city_by_id(self, city_id: int) -> Optional[City]:
+        """Get city by ID"""
+        result = await self.db.execute(
+            select(City).where(City.id == city_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def user_exists(self, email: str) -> bool:
+        """Check if user exists by email"""
+        user = await self.get_user_by_email(email)
         return user is not None

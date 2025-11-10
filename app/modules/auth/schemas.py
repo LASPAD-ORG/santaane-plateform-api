@@ -1,29 +1,45 @@
 """
 Auth module - Pydantic schemas
+All fields use camelCase for client communication
 """
-from pydantic import BaseModel
-from app.schemas.base import TimestampSchema
+from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
+from typing import Optional
 
 
 class UserCreate(BaseModel):
     """Schema for user registration"""
-    username: str
+    email: EmailStr
     password: str
+    fullName: str
+    countryId: Optional[int] = Field(None, gt=0)
+    cityId: Optional[int] = Field(None, gt=0)
+    timezone: Optional[str] = None
+    profilePhoto: Optional[str] = None
+    orcidId: Optional[str] = None
 
 
 class UserLogin(BaseModel):
     """Schema for user login"""
-    username: str
+    email: EmailStr
     password: str
 
 
-class UserResponse(TimestampSchema):
+class UserResponse(BaseModel):
     """Schema for user response (without password)"""
     id: int
-    username: str
+    email: EmailStr
+    fullName: str
+    countryName: Optional[str] = None
+    cityName: Optional[str] = None
+    timezone: Optional[str] = None
+    profilePhoto: Optional[str] = None
+    orcidId: Optional[str] = None
+    createdAt: datetime
+    updatedAt: datetime
 
 
 class TokenResponse(BaseModel):
     """Schema for JWT token response"""
-    access_token: str
-    token_type: str = "bearer"
+    accessToken: str
+    tokenType: str = "bearer"

@@ -5,11 +5,11 @@ Catches all exceptions and returns standardized JSON responses with error codes.
 Frontend receives only error codes for programmatic handling.
 Detailed error messages are logged for backend debugging.
 """
-from datetime import datetime
 from fastapi import Request, status
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError as PydanticValidationError
+from sqlalchemy.exc import IntegrityError, DBAPIError
 
 from app.core.error_codes import GeneralErrorCode
 from app.core.logging import get_logger
@@ -28,8 +28,6 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
     Response to frontend:
         - Only error_code (no detailed message)
-        - Timestamp for request tracking
-        - Request path for context
     """
     logger.error(
         f"HTTP Error | "
@@ -41,10 +39,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     return JSONResponse(
         status_code=exc.status_code,
         content={
-            "success": False,
-            "error_code": exc.detail,  # detail contains the error_code
-            "timestamp": datetime.utcnow().isoformat(),
-            "path": request.url.path
+            "errorCode": exc.detail  # detail contains the errorCode
         }
     )
 
@@ -73,10 +68,33 @@ async def validation_exception_handler(
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
-            "success": False,
-            "error_code": GeneralErrorCode.VALIDATION_ERROR,
-            "timestamp": datetime.utcnow().isoformat(),
-            "path": request.url.path
+            "errorCode": GeneralErrorCode.VALIDATION_ERROR
+        }
+    )
+
+
+async def database_error_handler(request: Request, exc: IntegrityError | DBAPIError) -> JSONResponse:
+    """
+    Handle SQLAlchemy database errors (IntegrityError, DBAPIError)
+
+    Logs:
+        - Error level with database error details for debugging
+
+    Response to frontend:
+        - Generic DATABASE_ERROR code
+        - No sensitive database details
+    """
+    logger.error(
+        f"Database Error | "
+        f"error_code={GeneralErrorCode.DATABASE_ERROR} | "
+        f"path={request.url.path} | "
+        f"detail={str(exc)}"
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "errorCode": GeneralErrorCode.DATABASE_ERROR
         }
     )
 
@@ -101,9 +119,6 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "success": False,
-            "error_code": GeneralErrorCode.INTERNAL_SERVER_ERROR,
-            "timestamp": datetime.utcnow().isoformat(),
-            "path": request.url.path
+            "errorCode": GeneralErrorCode.INTERNAL_SERVER_ERROR
         }
     )

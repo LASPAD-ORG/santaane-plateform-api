@@ -108,6 +108,9 @@ Temporary Items
 *.tmp
 *.temp
 
+# Database dumps
+dumps/
+
 # Documentation (generated for Claude Code)
 CLAUDE.md
 .claude
