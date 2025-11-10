@@ -171,6 +171,7 @@ show_help() {
     echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}shell${NC}                ${GRAY}→${NC} Shell dans le conteneur"
     echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}test${NC}                 ${GRAY}→${NC} Lancer les tests"
     echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}status${NC}, ${NEON_BLUE}ps${NC}           ${GRAY}→${NC} État des services"
+    echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}poetry-lock${NC}          ${GRAY}→${NC} Mettre à jour poetry.lock"
     echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}clean${NC}                ${GRAY}→${NC} Nettoyage complet"
     echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}help${NC}                 ${GRAY}→${NC} Afficher cette aide"
     echo ""
@@ -195,18 +196,6 @@ start_services() {
         print_warning "Les services sont déjà en cours d'exécution"
         print_info "Utilisez './santaane restart' pour redémarrer"
     else
-        # Check if poetry.lock needs update
-        if [ -f "pyproject.toml" ]; then
-            print_progress "Vérification des dépendances Poetry..."
-
-            # Try to check if lock file is outdated (will fail silently if not)
-            if ! poetry check --lock 2>/dev/null; then
-                print_warning "poetry.lock est obsolète, mise à jour en cours..."
-                poetry lock
-                print_success "poetry.lock mis à jour !"
-            fi
-        fi
-
         print_progress "Initialisation de Docker Compose..."
         $DOCKER_COMPOSE up -d --build
         echo ""
@@ -650,6 +639,36 @@ show_status() {
     print_header "État des services"
     check_docker
     $DOCKER_COMPOSE ps
+}
+
+# Update poetry.lock file
+poetry_lock() {
+    print_header "Mise à jour du poetry.lock"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        print_info "Utilisez './santaane start' d'abord"
+        exit 1
+    fi
+
+    print_info "Mise à jour du fichier poetry.lock..."
+    print_warning "Cette commande peut prendre quelques minutes..."
+
+    $DOCKER_COMPOSE exec api poetry lock
+
+    if [ $? -eq 0 ]; then
+        print_success "poetry.lock mis à jour avec succès!"
+        echo ""
+        print_info "N'oubliez pas de:"
+        echo -e "${CYAN}  1. Vérifier les changements: ${MAGENTA}git diff poetry.lock${NC}"
+        echo -e "${CYAN}  2. Commiter le fichier: ${MAGENTA}git add poetry.lock && git commit${NC}"
+        echo -e "${CYAN}  3. Rebuild les conteneurs: ${MAGENTA}./santaane rebuild${NC}"
+        echo ""
+    else
+        print_error "Échec de la mise à jour du poetry.lock"
+        exit 1
+    fi
 }
 
 # Seed countries from a JSON file
@@ -1189,6 +1208,9 @@ case "${1:-help}" in
         ;;
     status|ps)
         show_status
+        ;;
+    poetry-lock)
+        poetry_lock
         ;;
     clean)
         clean_all

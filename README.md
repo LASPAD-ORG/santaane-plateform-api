@@ -18,6 +18,7 @@ API backend moderne et performante pour la plateforme Santaane, construite avec 
 - [Configuration](#-configuration)
 - [Lancement du projet](#-lancement-du-projet)
 - [CLI Santaane](#-cli-santaane)
+- [Gestion des dépendances](#-gestion-des-dépendances)
 - [Architecture](#-architecture)
 - [Créer un nouveau module](#-créer-un-nouveau-module)
 - [Migrations de base de données](#-migrations-de-base-de-données)
@@ -289,6 +290,7 @@ Le projet inclut un CLI complet avec interface colorée pour gérer toutes les o
 | `shell` | - | Shell dans le conteneur |
 | `test` | - | Lancer les tests |
 | `status` | `ps` | État des services |
+| `poetry-lock` | - | Mettre à jour poetry.lock |
 | `clean` | - | Nettoyage complet |
 | `help` | - | Afficher l'aide |
 
@@ -318,7 +320,47 @@ Le projet inclut un CLI complet avec interface colorée pour gérer toutes les o
 
 # Voir l'état des services
 ./santaane status
+
+# Mettre à jour poetry.lock après modification de pyproject.toml
+./santaane poetry-lock
 ```
+
+---
+
+## 📦 Gestion des dépendances
+
+### Ajouter ou modifier une dépendance
+
+Si vous devez ajouter ou modifier une dépendance Python :
+
+1. **Modifiez `pyproject.toml`** directement dans votre éditeur
+
+2. **Mettez à jour `poetry.lock`** :
+```bash
+./santaane poetry-lock
+```
+
+3. **Vérifiez les changements** :
+```bash
+git diff poetry.lock
+```
+
+4. **Commitez les deux fichiers** :
+```bash
+git add pyproject.toml poetry.lock
+git commit -m "chore: update dependencies"
+```
+
+5. **Rebuilder les conteneurs** pour appliquer les changements :
+```bash
+./santaane rebuild
+```
+
+### ⚠️ Important
+
+- **Aucune installation locale requise** : Poetry s'exécute dans Docker, pas besoin de l'installer sur votre machine
+- **Toujours commiter `poetry.lock`** : Ce fichier garantit que tous les développeurs utilisent les mêmes versions
+- **Rebuilder après mise à jour** : Les dépendances sont installées au build du conteneur
 
 ---
 
