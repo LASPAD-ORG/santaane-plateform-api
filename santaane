@@ -160,8 +160,13 @@ show_help() {
     echo -e "  ${CYAN}║${NC}  ${NEON_BLUE}help${NC}                 ${GRAY}→${NC} Afficher cette aide"
     echo ""
 
+    echo -e "  ${PINK}${BOLD}╔═══ 🧩 GÉNÉRATION DE CODE${NC}"
+    echo -e "  ${PINK}║${NC}"
+    echo -e "  ${PINK}║${NC}  ${MAGENTA}gm${NC}, ${MAGENTA}gen-module${NC}, ${MAGENTA}module${NC}  ${GRAY}→${NC} Générer un nouveau module"
+    echo ""
+
     echo -e "${GRAY}${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GRAY}${DIM}  Exemple: ${NC}${CYAN}./santaane start${NC} ${GRAY}|${NC} ${MAGENTA}./santaane mk${NC} ${GRAY}|${NC} ${PINK}./santaane logs${NC}"
+    echo -e "${GRAY}${DIM}  Exemple: ${NC}${CYAN}./santaane start${NC} ${GRAY}|${NC} ${MAGENTA}./santaane mk${NC} ${GRAY}|${NC} ${PINK}./santaane gm${NC} ${GRAY}|${NC} ${CYAN}./santaane logs${NC}"
     echo -e "${GRAY}${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 }
@@ -463,6 +468,302 @@ clean_all() {
     fi
 }
 
+# Generate new module with complete scaffolding
+generate_module() {
+    print_header "GÉNÉRATION D'UN NOUVEAU MODULE"
+
+    # Prompt for module name
+    echo -ne "${NEON_BLUE}📦 Nom du module (pluriel, ex: courses, teachers):${NC} "
+    read module_name
+
+    # Validate module name
+    if [[ ! "$module_name" =~ ^[a-z][a-z0-9_]*$ ]]; then
+        print_error "Nom de module invalide. Utilisez des lettres minuscules, chiffres et underscores uniquement."
+        exit 1
+    fi
+
+    # Check if module exists
+    if [ -d "app/modules/$module_name" ]; then
+        print_error "Le module '$module_name' existe déjà!"
+        exit 1
+    fi
+
+    # Prompt for router prefix
+    echo -ne "${NEON_BLUE}🔗 Prefix du router (sans /):${NC} "
+    read router_prefix
+
+    # Derive entity name from module name (capitalize first letter, remove 's' if plural)
+    entity_name=$(echo "$module_name" | sed 's/s$//' | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
+
+    # Derive variables
+    entity_lower=$(echo "$entity_name" | awk '{print tolower(substr($0,1,1)) substr($0,2)}')
+    entity_upper=$(echo "$entity_name" | tr '[:lower:]' '[:upper:]')
+    entities="${module_name}"
+
+    print_info "Génération du module '$module_name'..."
+    echo ""
+
+    # Create module directory
+    mkdir -p "app/modules/$module_name"
+    print_success "  ├─ 📁 Création du dossier app/modules/$module_name/"
+
+    # Generate __init__.py
+    cat > "app/modules/$module_name/__init__.py" << EOF
+"""
+$module_name module
+"""
+from app.modules.$module_name.routes import router
+
+__all__ = ["router"]
+EOF
+    print_success "  ├─ 📄 __init__.py"
+
+    # Generate schemas.py
+    cat > "app/modules/$module_name/schemas.py" << EOF
+"""
+$module_name module - Pydantic schemas
+"""
+from pydantic import BaseModel
+from typing import Optional
+from app.schemas.base import TimestampSchema
+
+
+class ${entity_name}Create(BaseModel):
+    """Schema for creating a $entity_lower"""
+    pass  # À compléter - ajouter les champs nécessaires
+
+
+class ${entity_name}Update(BaseModel):
+    """Schema for updating a $entity_lower"""
+    pass  # À compléter - tous les champs optionnels
+
+
+class ${entity_name}Response(TimestampSchema):
+    """Schema for $entity_lower response"""
+    id: int
+    pass  # À compléter - ajouter les champs de réponse
+
+
+class Paginated${entity_name}Response(BaseModel):
+    """Paginated $entity_lower response"""
+    items: list[${entity_name}Response]
+    total: int
+    skip: int
+    limit: int
+    has_more: bool
+EOF
+    print_success "  ├─ 📄 schemas.py"
+
+    # Generate repository.py
+    cat > "app/modules/$module_name/repository.py" << EOF
+"""
+$module_name module - Database repository
+"""
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from typing import Optional
+
+from app.core.logging import get_logger
+# from app.models.$entity_lower import $entity_name
+
+logger = get_logger(__name__)
+
+
+class ${entity_name}Repository:
+    """Repository for $entity_lower database operations"""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def get_all(self, skip: int = 0, limit: int = 20):
+        """Get all $entities with pagination"""
+        pass  # À compléter
+        # total_query = select(func.count()).select_from($entity_name)
+        # total = await self.db.scalar(total_query)
+        #
+        # query = select($entity_name).offset(skip).limit(limit)
+        # result = await self.db.execute(query)
+        # items = result.scalars().all()
+        #
+        # return {
+        #     "items": items,
+        #     "total": total,
+        #     "skip": skip,
+        #     "limit": limit,
+        #     "has_more": skip + limit < total
+        # }
+
+    async def get_by_id(self, ${entity_lower}_id: int):
+        """Get $entity_lower by ID"""
+        pass  # À compléter
+        # result = await self.db.execute(select($entity_name).where($entity_name.id == ${entity_lower}_id))
+        # return result.scalar_one_or_none()
+
+    async def create(self, ${entity_lower}_data: dict):
+        """Create a new $entity_lower"""
+        pass  # À compléter
+        # $entity_lower = $entity_name(**${entity_lower}_data)
+        # self.db.add($entity_lower)
+        # await self.db.commit()
+        # await self.db.refresh($entity_lower)
+        # return $entity_lower
+
+    async def update(self, $entity_lower, update_data: dict):
+        """Update an existing $entity_lower"""
+        pass  # À compléter
+        # for key, value in update_data.items():
+        #     setattr($entity_lower, key, value)
+        # await self.db.commit()
+        # await self.db.refresh($entity_lower)
+        # return $entity_lower
+
+    async def delete(self, $entity_lower):
+        """Delete a $entity_lower"""
+        pass  # À compléter
+        # await self.db.delete($entity_lower)
+        # await self.db.commit()
+EOF
+    print_success "  ├─ 📄 repository.py"
+
+    # Generate service.py
+    cat > "app/modules/$module_name/service.py" << EOF
+"""
+$module_name module - Business logic service
+"""
+from fastapi import HTTPException, status
+
+from app.modules.$module_name.repository import ${entity_name}Repository
+from app.modules.$module_name.schemas import ${entity_name}Create, ${entity_name}Update, ${entity_name}Response, Paginated${entity_name}Response
+from app.modules.$module_name.error_codes import ${entity_name}ErrorCode
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class ${entity_name}Service:
+    """Service for $entity_lower business logic"""
+
+    def __init__(self, repository: ${entity_name}Repository):
+        self.repository = repository
+
+    async def get_${entities}(self, skip: int = 0, limit: int = 20) -> Paginated${entity_name}Response:
+        """Get all $entities with pagination"""
+        logger.info(f"Fetching $entities (skip={skip}, limit={limit})")
+        pass  # À compléter
+        # result = await self.repository.get_all(skip=skip, limit=limit)
+        # return Paginated${entity_name}Response(**result)
+
+    async def get_${entity_lower}_by_id(self, ${entity_lower}_id: int) -> ${entity_name}Response:
+        """Get $entity_lower by ID"""
+        logger.info(f"Fetching $entity_lower ID: {${entity_lower}_id}")
+        pass  # À compléter
+        # $entity_lower = await self.repository.get_by_id(${entity_lower}_id)
+        # if not $entity_lower:
+        #     logger.warning(f"$entity_name not found: ID {${entity_lower}_id}")
+        #     raise HTTPException(
+        #         status_code=status.HTTP_404_NOT_FOUND,
+        #         detail=${entity_name}ErrorCode.${entity_upper}_NOT_FOUND
+        #     )
+        # return ${entity_name}Response.model_validate($entity_lower)
+
+    async def create_${entity_lower}(self, ${entity_lower}_data: ${entity_name}Create) -> ${entity_name}Response:
+        """Create a new $entity_lower"""
+        logger.info(f"Creating $entity_lower")
+        pass  # À compléter
+        # $entity_lower = await self.repository.create(${entity_lower}_data.model_dump())
+        # logger.info(f"$entity_name created: {${entity_lower}.id}")
+        # return ${entity_name}Response.model_validate($entity_lower)
+
+    async def update_${entity_lower}(self, ${entity_lower}_id: int, ${entity_lower}_data: ${entity_name}Update) -> ${entity_name}Response:
+        """Update a $entity_lower"""
+        logger.info(f"Updating $entity_lower ID: {${entity_lower}_id}")
+        pass  # À compléter
+
+    async def delete_${entity_lower}(self, ${entity_lower}_id: int) -> None:
+        """Delete a $entity_lower"""
+        logger.info(f"Deleting $entity_lower ID: {${entity_lower}_id}")
+        pass  # À compléter
+EOF
+    print_success "  ├─ 📄 service.py"
+
+    # Generate routes.py
+    cat > "app/modules/$module_name/routes.py" << EOF
+"""
+$module_name module - API routes
+"""
+from fastapi import APIRouter, Depends
+
+from app.core.security import get_current_user
+from app.models.user import User
+from app.modules.$module_name.schemas import ${entity_name}Response
+from app.modules.$module_name.service import ${entity_name}Service
+from app.modules.$module_name.utils import get_${entity_lower}_service
+
+router = APIRouter(prefix="/$router_prefix", tags=["$entity_name"])
+
+
+@router.get("/", response_model=${entity_name}Response)
+async def get_${entities}(
+    current_user: User = Depends(get_current_user),
+    service: ${entity_name}Service = Depends(get_${entity_lower}_service)
+):
+    """
+    Get all $entities
+
+    Example endpoint - à compléter selon vos besoins
+    """
+    pass  # À compléter
+    # return await service.get_${entities}(skip=skip, limit=limit)
+EOF
+    print_success "  ├─ 📄 routes.py"
+
+    # Generate error_codes.py
+    cat > "app/modules/$module_name/error_codes.py" << EOF
+"""
+$module_name module - Error codes
+"""
+from enum import Enum
+
+
+class ${entity_name}ErrorCode(str, Enum):
+    """$entity_name module error codes"""
+
+    ${entity_upper}_NOT_FOUND = "${entity_upper}_NOT_FOUND"
+    ${entity_upper}_ALREADY_EXISTS = "${entity_upper}_ALREADY_EXISTS"
+    INVALID_${entity_upper}_DATA = "INVALID_${entity_upper}_DATA"
+
+    # À compléter - ajouter d'autres codes d'erreur selon les besoins
+EOF
+    print_success "  ├─ 📄 error_codes.py"
+
+    # Generate utils.py
+    cat > "app/modules/$module_name/utils.py" << EOF
+"""
+$module_name module - Utility functions
+Helper functions and dependencies for $module_name module
+"""
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db import get_db
+from app.modules.$module_name.repository import ${entity_name}Repository
+from app.modules.$module_name.service import ${entity_name}Service
+
+
+def get_${entity_lower}_service(db: AsyncSession = Depends(get_db)) -> ${entity_name}Service:
+    """Dependency to get $entity_lower service instance"""
+    repository = ${entity_name}Repository(db)
+    return ${entity_name}Service(repository)
+EOF
+    print_success "  └─ 📄 utils.py"
+
+    echo ""
+    echo -e "${NEON_GREEN}${BOLD}✨ Module '$module_name' créé avec succès!${NC}"
+    echo ""
+    echo -e "${NEON_BLUE}${BOLD}📋 À faire:${NC} Ajouter le router dans ${YELLOW}app/api/v1/router.py${NC}"
+    echo ""
+}
+
 # Main command handler
 case "${1:-help}" in
     start|run|rd)
@@ -521,6 +822,9 @@ case "${1:-help}" in
         ;;
     clean)
         clean_all
+        ;;
+    gm|gen-module|module)
+        generate_module
         ;;
     help|-h|--help)
         show_help

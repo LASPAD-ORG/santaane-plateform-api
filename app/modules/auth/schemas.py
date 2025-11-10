@@ -1,8 +1,8 @@
 """
-User Pydantic schemas
+Auth module - Pydantic schemas
 """
-from pydantic import BaseModel, EmailStr
-from app.schemas.base import BaseSchema, TimestampSchema
+from pydantic import BaseModel
+from app.schemas.base import TimestampSchema
 
 
 class UserCreate(BaseModel):

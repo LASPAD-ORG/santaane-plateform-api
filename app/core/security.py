@@ -5,14 +5,18 @@ from datetime import datetime, timedelta
 from typing import Optional
 import jwt
 from passlib.hash import bcrypt
-from fastapi import Depends, Header
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.exceptions import AuthenticationError
+from app.modules.auth.error_codes import AuthErrorCode
 from app.db import get_db
 from app.models.user import User
+
+# OAuth2 scheme for Swagger UI integration
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 def hash_password(password: str) -> str:
@@ -46,42 +50,44 @@ def decode_access_token(token: str) -> dict:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
-        raise AuthenticationError("Token has expired")
-    except jwt.JWTError:
-        raise AuthenticationError("Invalid token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AuthErrorCode.TOKEN_EXPIRED
+        )
+    except (jwt.PyJWTError, jwt.DecodeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AuthErrorCode.TOKEN_INVALID
+        )
 
 
 async def get_current_user(
-    authorization: Optional[str] = Header(None, alias="Authorization"),
+    token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """
     Dependency to get the current authenticated user from JWT token.
+    This uses OAuth2PasswordBearer for automatic Swagger UI integration.
     Usage: current_user: User = Depends(get_current_user)
     """
-    if not authorization:
-        raise AuthenticationError("Authorization header missing")
-
-    # Extract token from "Bearer <token>" format
-    try:
-        scheme, token = authorization.split()
-        if scheme.lower() != "bearer":
-            raise AuthenticationError("Invalid authentication scheme")
-    except ValueError:
-        raise AuthenticationError("Invalid authorization header format")
-
     # Decode token
     payload = decode_access_token(token)
     username: str = payload.get("sub")
 
     if username is None:
-        raise AuthenticationError("Invalid token payload")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AuthErrorCode.INVALID_TOKEN_PAYLOAD
+        )
 
     # Get user from database
     result = await db.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
 
     if user is None:
-        raise AuthenticationError("User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AuthErrorCode.USER_NOT_FOUND
+        )
 
     return user

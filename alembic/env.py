@@ -1,7 +1,5 @@
 from logging.config import fileConfig
-import os
 import asyncio
-from dotenv import load_dotenv
 
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -15,15 +13,15 @@ from sqlmodel import SQLModel
 # Simply importing app.models will import all models defined in __init__.py
 import app.models  # This imports all models from app/models/__init__.py
 
-# Load environment variables
-load_dotenv()
+# Import centralized settings instead of using os.getenv
+from app.core.config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-# Override sqlalchemy.url with DATABASE_URL from environment
-database_url = os.getenv("DATABASE_URL")
+# Override sqlalchemy.url with DATABASE_URL from centralized settings
+database_url = settings.DATABASE_URL
 if database_url:
     # Convert to async URL for asyncpg
     async_database_url = database_url.replace(

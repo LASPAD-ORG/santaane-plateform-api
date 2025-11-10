@@ -2,7 +2,7 @@ services:
   api:
     build: .
     container_name: santaane_api
-    env_file: .env
+    env_file: .env  # All environment variables loaded from .env file
     ports:
       - "8000:8000"
     volumes:
@@ -13,9 +13,6 @@ services:
     depends_on:
       - db
       - pgbouncer
-    environment:
-      - ENVIRONMENT=development
-      - DEBUG=True
     # Pass --reload flag to uvicorn via entrypoint
     command: ["--reload"]
 

@@ -4,13 +4,14 @@ Async FastAPI with proper error handling, logging, and CORS
 """
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import ValidationError
 
 from app.core.config import settings
 from app.core.logging import setup_logging, get_logger
-from app.core.exceptions import APIException
 from app.middleware.exception_handler import (
-    api_exception_handler,
+    http_exception_handler,
     validation_exception_handler,
     general_exception_handler
 )
@@ -22,14 +23,19 @@ from app.api.v1.router import router as api_v1_router
 setup_logging()
 logger = get_logger(__name__)
 
-# Create FastAPI app
+# Create FastAPI app with OAuth2 configuration for Swagger UI
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     debug=settings.DEBUG,
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
+    swagger_ui_init_oauth={
+        "clientId": "swagger-ui",
+        "appName": settings.APP_NAME,
+        "usePkceWithAuthorizationCodeGrant": True,
+    }
 )
 
 # Setup CORS
@@ -39,7 +45,8 @@ setup_cors(app)
 app.add_middleware(LoggingMiddleware)
 
 # Register exception handlers
-app.add_exception_handler(APIException, api_exception_handler)
+from fastapi.exceptions import HTTPException
+app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(ValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)

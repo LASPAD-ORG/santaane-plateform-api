@@ -1,0 +1,36 @@
+"""
+Auth Module Error Codes
+Error codes specific to authentication and authorization
+"""
+from enum import Enum
+
+
+class AuthErrorCode(str, Enum):
+    """
+    Error codes for authentication and authorization operations.
+    Used by auth routes, JWT handling, and user management.
+    """
+
+    # Login/Authentication Errors
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+    INVALID_USERNAME_OR_PASSWORD = "INVALID_USERNAME_OR_PASSWORD"
+
+    # Token Errors
+    TOKEN_EXPIRED = "TOKEN_EXPIRED"
+    TOKEN_INVALID = "TOKEN_INVALID"
+    TOKEN_MISSING = "TOKEN_MISSING"
+    INVALID_TOKEN_PAYLOAD = "INVALID_TOKEN_PAYLOAD"
+    INVALID_TOKEN_FORMAT = "INVALID_TOKEN_FORMAT"
+    INVALID_AUTHENTICATION_SCHEME = "INVALID_AUTHENTICATION_SCHEME"
+    AUTHORIZATION_HEADER_MISSING = "AUTHORIZATION_HEADER_MISSING"
+
+    # User Errors
+    USER_NOT_FOUND = "USER_NOT_FOUND"
+    USERNAME_ALREADY_EXISTS = "USERNAME_ALREADY_EXISTS"
+    INVALID_USERNAME = "INVALID_USERNAME"
+    INVALID_PASSWORD = "INVALID_PASSWORD"
+
+    # Permission Errors
+    INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS"
+    ACCOUNT_DISABLED = "ACCOUNT_DISABLED"
+    ACCOUNT_LOCKED = "ACCOUNT_LOCKED"
