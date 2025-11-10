@@ -5,6 +5,16 @@
 
 set -e
 
+# Detect Docker Compose command (v1: docker-compose, v2: docker compose)
+if docker compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+elif docker-compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE="docker-compose"
+else
+    echo "Error: Neither 'docker compose' nor 'docker-compose' is available"
+    exit 1
+fi
+
 # Colors and styles - Futuristic theme
 BOLD='\033[1m'
 DIM='\033[2m'
@@ -102,7 +112,7 @@ check_docker() {
 
 # Function to check if services are running
 check_running() {
-    if docker-compose ps | grep -q "santaane_api.*Up"; then
+    if $DOCKER_COMPOSE ps | grep -q "santaane_api.*Up"; then
         return 0
     else
         return 1
@@ -198,7 +208,7 @@ start_services() {
         fi
 
         print_progress "Initialisation de Docker Compose..."
-        docker-compose up -d --build
+        $DOCKER_COMPOSE up -d --build
         echo ""
         print_success "Services démarrés en mode détaché !"
         echo ""
@@ -218,7 +228,7 @@ start_dev() {
     check_docker
     print_info "Démarrage avec logs en direct..."
     print_info "Appuyez sur Ctrl+C pour arrêter"
-    docker-compose up --build
+    $DOCKER_COMPOSE up --build
 }
 
 # Stop services
@@ -228,7 +238,7 @@ stop_services() {
 
     if check_running; then
         print_info "Arrêt des services..."
-        docker-compose down
+        $DOCKER_COMPOSE down
         print_success "Services arrêtés"
     else
         print_warning "Les services ne sont pas en cours d'exécution"
@@ -240,7 +250,7 @@ restart_services() {
     print_header "Redémarrage des services"
     check_docker
     print_info "Redémarrage..."
-    docker-compose restart
+    $DOCKER_COMPOSE restart
     print_success "Services redémarrés"
 }
 
@@ -249,9 +259,9 @@ rebuild_services() {
     print_header "Rebuild des services"
     check_docker
     print_info "Arrêt des services..."
-    docker-compose down
+    $DOCKER_COMPOSE down
     print_info "Rebuild en cours..."
-    docker-compose up -d --build
+    $DOCKER_COMPOSE up -d --build
     print_success "Rebuild terminé et services redémarrés"
 }
 
@@ -267,7 +277,7 @@ apply_migrations() {
     fi
 
     print_info "Application des migrations..."
-    docker-compose exec api poetry run alembic upgrade head
+    $DOCKER_COMPOSE exec api poetry run alembic upgrade head
     print_success "Migrations appliquées"
 }
 
@@ -291,7 +301,7 @@ make_migrations() {
     fi
 
     print_info "Génération de la migration '$migration_name'..."
-    docker-compose exec api poetry run alembic revision --autogenerate -m "$migration_name"
+    $DOCKER_COMPOSE exec api poetry run alembic revision --autogenerate -m "$migration_name"
     print_success "Migration générée"
 }
 
@@ -305,7 +315,7 @@ migration_history() {
         exit 1
     fi
 
-    docker-compose exec api poetry run alembic history
+    $DOCKER_COMPOSE exec api poetry run alembic history
 }
 
 # Show current migration
@@ -318,7 +328,7 @@ migration_current() {
         exit 1
     fi
 
-    docker-compose exec api poetry run alembic current
+    $DOCKER_COMPOSE exec api poetry run alembic current
 }
 
 # Rollback migration
@@ -336,7 +346,7 @@ rollback_migration() {
 
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
         print_info "Rollback en cours..."
-        docker-compose exec api poetry run alembic downgrade -1
+        $DOCKER_COMPOSE exec api poetry run alembic downgrade -1
         print_success "Rollback effectué"
     else
         print_info "Rollback annulé"
@@ -375,7 +385,7 @@ clear_alembic_version() {
     if [ "$confirm" = "CLEAR-ALEMBIC" ]; then
         print_info "Vidage de la table alembic_version..."
 
-        docker-compose exec -T db psql -U postgres santaane -c "TRUNCATE TABLE alembic_version;" > /dev/null 2>&1
+        $DOCKER_COMPOSE exec -T db psql -U postgres santaane -c "TRUNCATE TABLE alembic_version;" > /dev/null 2>&1
 
         if [ $? -eq 0 ]; then
             print_success "Table alembic_version vidée avec succès!"
@@ -405,7 +415,7 @@ view_logs() {
     fi
 
     print_info "Affichage des logs (Ctrl+C pour quitter)..."
-    docker-compose logs -f api
+    $DOCKER_COMPOSE logs -f api
 }
 
 # View DB logs
@@ -419,7 +429,7 @@ view_db_logs() {
     fi
 
     print_info "Affichage des logs (Ctrl+C pour quitter)..."
-    docker-compose logs -f db
+    $DOCKER_COMPOSE logs -f db
 }
 
 # View all logs
@@ -433,7 +443,7 @@ view_all_logs() {
     fi
 
     print_info "Affichage des logs (Ctrl+C pour quitter)..."
-    docker-compose logs -f
+    $DOCKER_COMPOSE logs -f
 }
 
 # Connect to PostgreSQL
@@ -448,7 +458,7 @@ connect_db() {
 
     print_info "Connexion à la base de données..."
     print_info "Pour quitter: tapez \\q"
-    docker-compose exec db psql -U postgres -d santaane
+    $DOCKER_COMPOSE exec db psql -U postgres -d santaane
 }
 
 # Reset database
@@ -461,11 +471,11 @@ reset_db() {
 
     if [ "$confirm" = "RESET" ]; then
         print_info "Arrêt des services..."
-        docker-compose down
+        $DOCKER_COMPOSE down
         print_info "Suppression du volume de la base de données..."
         docker volume rm santaane-plateform-api_pgdata 2>/dev/null || true
         print_info "Redémarrage des services..."
-        docker-compose up -d --build
+        $DOCKER_COMPOSE up -d --build
         print_success "Base de données réinitialisée"
     else
         print_info "Réinitialisation annulée"
@@ -491,7 +501,7 @@ dump_db() {
     print_info "Création du dump dans $DUMP_DIR..."
 
     # Dump the database
-    docker-compose exec -T db pg_dump -U postgres santaane > "$DUMP_DIR/santaane_dump.sql"
+    $DOCKER_COMPOSE exec -T db pg_dump -U postgres santaane > "$DUMP_DIR/santaane_dump.sql"
 
     if [ $? -eq 0 ]; then
         # Get dump size
@@ -577,29 +587,29 @@ restore_db() {
 
         # Arrêter l'API pour libérer les connexions
         print_info "Arrêt temporaire de l'API..."
-        docker-compose stop api
+        $DOCKER_COMPOSE stop api
 
         # Terminer toutes les connexions actives
-        docker-compose exec -T db psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'santaane' AND pid <> pg_backend_pid();" > /dev/null 2>&1
+        $DOCKER_COMPOSE exec -T db psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'santaane' AND pid <> pg_backend_pid();" > /dev/null 2>&1
 
         # Drop and recreate database
-        docker-compose exec -T db psql -U postgres -c "DROP DATABASE IF EXISTS santaane;" > /dev/null 2>&1
-        docker-compose exec -T db psql -U postgres -c "CREATE DATABASE santaane;" > /dev/null 2>&1
+        $DOCKER_COMPOSE exec -T db psql -U postgres -c "DROP DATABASE IF EXISTS santaane;" > /dev/null 2>&1
+        $DOCKER_COMPOSE exec -T db psql -U postgres -c "CREATE DATABASE santaane;" > /dev/null 2>&1
 
         # Restore dump
         print_info "Importation du dump..."
-        cat "$SELECTED_DUMP" | docker-compose exec -T db psql -U postgres santaane > /dev/null 2>&1
+        cat "$SELECTED_DUMP" | $DOCKER_COMPOSE exec -T db psql -U postgres santaane > /dev/null 2>&1
 
         if [ $? -eq 0 ]; then
             # Redémarrer l'API
             print_info "Redémarrage de l'API..."
-            docker-compose start api
+            $DOCKER_COMPOSE start api
 
             print_success "Base de données restaurée avec succès!"
             print_info "N'oubliez pas d'appliquer les migrations si nécessaire: ${MAGENTA}./santaane migrate${NC}"
         else
             print_error "Échec de la restauration"
-            docker-compose start api
+            $DOCKER_COMPOSE start api
             exit 1
         fi
     else
@@ -618,7 +628,7 @@ open_shell() {
     fi
 
     print_info "Ouverture du shell (tapez 'exit' pour quitter)..."
-    docker-compose exec api /bin/bash
+    $DOCKER_COMPOSE exec api /bin/bash
 }
 
 # Run tests
@@ -632,14 +642,14 @@ run_tests() {
     fi
 
     print_info "Lancement des tests..."
-    docker-compose exec api poetry run pytest -v
+    $DOCKER_COMPOSE exec api poetry run pytest -v
 }
 
 # Show status
 show_status() {
     print_header "État des services"
     check_docker
-    docker-compose ps
+    $DOCKER_COMPOSE ps
 }
 
 # Seed countries from a JSON file
@@ -670,7 +680,7 @@ seed_countries() {
     print_progress "Insertion des pays dans la base de données..."
 
     # Exécuter un script Python asynchrone à l'intérieur du conteneur API
-    docker-compose exec -T api poetry run python - << EOF
+    $DOCKER_COMPOSE exec -T api poetry run python - << EOF
 import json
 import asyncio
 from sqlmodel import select
@@ -731,7 +741,7 @@ seed_cities() {
     print_progress "Insertion des villes dans la base de données..."
 
     # Script Python exécuté dans le conteneur
-    docker-compose exec -T api poetry run python - << EOF
+    $DOCKER_COMPOSE exec -T api poetry run python - << EOF
 import json
 import asyncio
 from sqlmodel import select
@@ -782,7 +792,7 @@ clean_all() {
 
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
         print_info "Nettoyage en cours..."
-        docker-compose down -v
+        $DOCKER_COMPOSE down -v
         print_success "Nettoyage terminé"
     else
         print_info "Nettoyage annulé"
