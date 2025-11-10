@@ -482,24 +482,26 @@ dump_db() {
         exit 1
     fi
 
-    # Create dumps directory with timestamp
-    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    DUMP_DIR="dumps/${TIMESTAMP}"
-    mkdir -p "$DUMP_DIR"
+    # Create dumps directory if it doesn't exist
+    mkdir -p "dumps"
 
-    print_info "Création du dump dans $DUMP_DIR..."
+    # Generate filename with timestamp
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    DUMP_FILE="dumps/santaane_${TIMESTAMP}.sql"
+
+    print_info "Création du dump: $DUMP_FILE..."
 
     # Dump the database
-    $DOCKER_COMPOSE exec -T db pg_dump -U postgres santaane > "$DUMP_DIR/santaane_dump.sql"
+    $DOCKER_COMPOSE exec -T db pg_dump -U postgres santaane > "$DUMP_FILE"
 
     if [ $? -eq 0 ]; then
         # Get dump size
-        DUMP_SIZE=$(du -h "$DUMP_DIR/santaane_dump.sql" | cut -f1)
+        DUMP_SIZE=$(du -h "$DUMP_FILE" | cut -f1)
 
         print_success "Dump créé avec succès!"
         echo ""
         echo -e "${NEON_BLUE}${BOLD}  ┌─────────────────────────────────────────────┐${NC}"
-        echo -e "${NEON_BLUE}${BOLD}  │${NC}  ${CYAN}Fichier${NC}   → ${NEON_GREEN}$DUMP_DIR/santaane_dump.sql${NC}"
+        echo -e "${NEON_BLUE}${BOLD}  │${NC}  ${CYAN}Fichier${NC}   → ${NEON_GREEN}$DUMP_FILE${NC}"
         echo -e "${NEON_BLUE}${BOLD}  │${NC}  ${CYAN}Taille${NC}    → ${NEON_GREEN}${DUMP_SIZE}${NC}"
         echo -e "${NEON_BLUE}${BOLD}  │${NC}  ${CYAN}Date${NC}      → ${NEON_GREEN}$(date '+%Y-%m-%d %H:%M:%S')${NC}"
         echo -e "${NEON_BLUE}${BOLD}  └─────────────────────────────────────────────┘${NC}"
@@ -507,7 +509,7 @@ dump_db() {
         print_info "Pour restaurer: ${MAGENTA}./santaane db-restore${NC}"
     else
         print_error "Échec de la création du dump"
-        rm -rf "$DUMP_DIR"
+        rm -f "$DUMP_FILE"
         exit 1
     fi
 }
@@ -529,11 +531,11 @@ restore_db() {
         exit 1
     fi
 
-    # List available dumps
+    # List available dumps (sorted by date, most recent first)
     print_info "Dumps disponibles:"
     echo ""
 
-    DUMPS=($(ls -1dt dumps/*/ 2>/dev/null))
+    DUMPS=($(ls -1t dumps/santaane_*.sql 2>/dev/null))
 
     if [ ${#DUMPS[@]} -eq 0 ]; then
         print_error "Aucun dump trouvé dans le dossier 'dumps'"
@@ -542,13 +544,14 @@ restore_db() {
 
     # Display dumps with index
     for i in "${!DUMPS[@]}"; do
-        DUMP_NAME=$(basename "${DUMPS[$i]}")
-        DUMP_FILE="${DUMPS[$i]}santaane_dump.sql"
+        DUMP_FILE="${DUMPS[$i]}"
+        DUMP_NAME=$(basename "$DUMP_FILE")
+        DUMP_SIZE=$(du -h "$DUMP_FILE" | cut -f1)
 
-        if [ -f "$DUMP_FILE" ]; then
-            DUMP_SIZE=$(du -h "$DUMP_FILE" | cut -f1)
-            echo -e "  ${NEON_BLUE}[$((i+1))]${NC} ${CYAN}$DUMP_NAME${NC} ${GRAY}(${DUMP_SIZE})${NC}"
-        fi
+        # Extract date from filename (santaane_YYYYMMDD_HHMMSS.sql)
+        DUMP_DATE=$(echo "$DUMP_NAME" | sed 's/santaane_\([0-9]\{8\}_[0-9]\{6\}\).*/\1/' | sed 's/\([0-9]\{4\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)_\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)/\1-\2-\3 \4:\5:\6/')
+
+        echo -e "  ${NEON_BLUE}[$((i+1))]${NC} ${CYAN}$DUMP_DATE${NC} ${GRAY}(${DUMP_SIZE})${NC}"
     done
 
     echo ""
@@ -561,7 +564,7 @@ restore_db() {
         exit 1
     fi
 
-    SELECTED_DUMP="${DUMPS[$((DUMP_INDEX-1))]}santaane_dump.sql"
+    SELECTED_DUMP="${DUMPS[$((DUMP_INDEX-1))]}"
 
     if [ ! -f "$SELECTED_DUMP" ]; then
         print_error "Fichier de dump introuvable: $SELECTED_DUMP"
