@@ -1,6 +1,12 @@
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
+
+if TYPE_CHECKING:
+    from app.models.user_role import UserRole
+    from app.models.country import Country
+    from app.models.city import City
+
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
@@ -24,8 +30,12 @@ class User(SQLModel, table=True):
         default_factory=datetime.utcnow,
         nullable=False
     )
-    
+
     # Relationships
     country: Optional["Country"] = Relationship(back_populates="users")
     city: Optional["City"] = Relationship(back_populates="users")
+    user_roles: list["UserRole"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"foreign_keys": "UserRole.user_id"}
+    )
 

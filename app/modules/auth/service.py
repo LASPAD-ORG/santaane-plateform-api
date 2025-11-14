@@ -18,7 +18,7 @@ class AuthService:
     def __init__(self, repository: AuthRepository):
         self.repository = repository
 
-    async def register_user(self, user_data: UserCreate) -> UserResponse:
+    async def register_user(self, user_data: UserCreate) -> str:
         """Register a new user (camelCase)"""
         logger.info(f"Registration attempt for email: {user_data.email}")
 
@@ -30,7 +30,6 @@ class AuthService:
             )
 
         # Validate country_id if provided
-        country_name = None
         if user_data.countryId is not None:
             country = await self.repository.get_country_by_id(user_data.countryId)
             if not country:
@@ -39,10 +38,8 @@ class AuthService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=AuthErrorCode.INVALID_COUNTRY_ID
                 )
-            country_name = country.name
 
         # Validate city_id if provided
-        city_name = None
         if user_data.cityId is not None:
             city = await self.repository.get_city_by_id(user_data.cityId)
             if not city:
@@ -51,7 +48,6 @@ class AuthService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=AuthErrorCode.INVALID_CITY_ID
                 )
-            city_name = city.name
 
         hashed_password = hash_password(user_data.password)
         user = await self.repository.create_user(
@@ -67,22 +63,7 @@ class AuthService:
 
         logger.info(f"User registered successfully: {user.email}")
 
-        # Extract country and city names from loaded relationships
-        country_name = user.country.name if user.country else None
-        city_name = user.city.name if user.city else None
-
-        return UserResponse(
-            id=user.id,
-            email=user.email,
-            fullName=user.full_name,
-            countryName=country_name,
-            cityName=city_name,
-            timezone=user.timezone,
-            profilePhoto=user.profile_photo,
-            orcidId=user.orcid_id,
-            createdAt=user.created_at,
-            updatedAt=user.updated_at
-        )
+        return "User created successfully"
 
     async def login_user(self, credentials: UserLogin) -> TokenResponse:
         """Authenticate user and return JWT token (camelCase)"""
@@ -101,6 +82,40 @@ class AuthService:
 
         logger.info(f"Login successful for email: {user.email}")
         return TokenResponse(
-            accessToken=access_token,
-            tokenType="bearer"
+            access_token=access_token,
+            token_type="bearer"
+        )
+
+    async def get_current_user(self, user_id: int) -> UserResponse:
+        """Get current authenticated user details (camelCase)"""
+        logger.info(f"Fetching user details for user_id: {user_id}")
+
+        user = await self.repository.get_user_by_id(user_id)
+
+        if not user:
+            logger.warning(f"User not found: {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=AuthErrorCode.USER_NOT_FOUND
+            )
+
+        # Extract country and city names from loaded relationships
+        country_name = user.country.name if user.country else None
+        city_name = user.city.name if user.city else None
+
+        # Get user roles
+        roles = await self.repository.get_user_roles(user_id)
+
+        return UserResponse(
+            id=user.id,
+            email=user.email,
+            fullName=user.full_name,
+            countryName=country_name,
+            cityName=city_name,
+            timezone=user.timezone,
+            profilePhoto=user.profile_photo,
+            orcidId=user.orcid_id,
+            roles=roles,
+            createdAt=user.created_at,
+            updatedAt=user.updated_at
         )

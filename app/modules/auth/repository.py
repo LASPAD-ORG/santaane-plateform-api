@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.models.user import User
 from app.models.country import Country
 from app.models.city import City
+from app.models.user_role import UserRole
 
 
 class AuthRepository:
@@ -21,6 +22,15 @@ class AuthRepository:
         """Get user by email"""
         result = await self.db.execute(
             select(User).where(User.email == email)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_user_by_id(self, user_id: int) -> Optional[User]:
+        """Get user by ID with relationships loaded"""
+        result = await self.db.execute(
+            select(User)
+            .options(selectinload(User.country), selectinload(User.city))
+            .where(User.id == user_id)
         )
         return result.scalar_one_or_none()
 
@@ -76,3 +86,13 @@ class AuthRepository:
         """Check if user exists by email"""
         user = await self.get_user_by_email(email)
         return user is not None
+
+    async def get_user_roles(self, user_id: int) -> list[str]:
+        """Get role names for a user"""
+        result = await self.db.execute(
+            select(UserRole)
+            .options(selectinload(UserRole.role))
+            .where(UserRole.user_id == user_id)
+        )
+        user_roles = result.scalars().all()
+        return [ur.role.name for ur in user_roles]
