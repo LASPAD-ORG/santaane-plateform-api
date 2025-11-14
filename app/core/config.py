@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # File Upload
+    UPLOAD_DIR: str = "app/uploads"  # Local storage directory (inside app folder)
+    MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB in bytes
+    ALLOWED_FILE_TYPES: List[str] = ["pdf", "docx", "doc", "tex", "zip", "png", "jpg", "jpeg"]
+
     @field_validator('CORS_ORIGINS', mode='before')
     @classmethod
     def parse_cors_origins(cls, v):

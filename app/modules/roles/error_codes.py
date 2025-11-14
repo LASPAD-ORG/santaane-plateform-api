@@ -1,0 +1,16 @@
+"""
+roles module - Error codes
+"""
+from enum import Enum
+
+
+class RoleErrorCode(str, Enum):
+    """Role module error codes"""
+
+    ROLE_NOT_FOUND = "ROLE_NOT_FOUND"
+    ROLE_ALREADY_EXISTS = "ROLE_ALREADY_EXISTS"
+    INVALID_ROLE_DATA = "INVALID_ROLE_DATA"
+    USER_NOT_FOUND = "USER_NOT_FOUND"
+    USER_ALREADY_HAS_ROLE = "USER_ALREADY_HAS_ROLE"
+    USER_DOES_NOT_HAVE_ROLE = "USER_DOES_NOT_HAVE_ROLE"
+    CANNOT_DELETE_ROLE_WITH_USERS = "CANNOT_DELETE_ROLE_WITH_USERS"

@@ -54,7 +54,12 @@ def decode_access_token(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=AuthErrorCode.TOKEN_EXPIRED
         )
-    except (jwt.PyJWTError, jwt.DecodeError, ValueError):
+    except (jwt.PyJWTError, jwt.DecodeError, ValueError) as e:
+        # Log the actual error for debugging
+        from app.core.logging import get_logger
+        logger = get_logger(__name__)
+        logger.error(f"Token decode error: {type(e).__name__}: {str(e)}")
+        logger.error(f"Token received (first 50 chars): {token[:50] if token else 'None'}...")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=AuthErrorCode.TOKEN_INVALID
@@ -81,7 +86,7 @@ async def get_current_user(
         )
 
     # Get user from database
-    result = await db.execute(select(User).where(User.username == username))
+    result = await db.execute(select(User).where(User.email == username))
     user = result.scalar_one_or_none()
 
     if user is None:

@@ -117,3 +117,6 @@ seeders/*
 # Documentation (generated for Claude Code)
 CLAUDE.md
 .claude
+# Uploaded files
+app/uploads/*
+!app/uploads/.gitkeep
