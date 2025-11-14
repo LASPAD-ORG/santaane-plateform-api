@@ -33,3 +33,7 @@ def setup_logging():
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance"""
     return logging.getLogger(name)
+
+
+# Default logger for application use
+logger = get_logger("app")
