@@ -16,6 +16,7 @@ class ReviewResponse(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     review_assignment_id: int = Field(foreign_key="review_assignments.id", nullable=False, index=True)
+    manuscript_id: int = Field(foreign_key="manuscripts.id", nullable=False, index=True)  # Denormalized for easier queries
 
     # Review content - stored as TEXT instead of JSONB
     # Expected format: JSON string with answers to form questions

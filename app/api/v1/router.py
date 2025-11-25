@@ -8,7 +8,7 @@ from app.modules.roles import routes as roles
 from app.modules.laboratories import routes as laboratories
 from app.modules.users import routes as users
 from app.modules.files import routes as files
-
+from app.modules.manuscripts import routes as manuscripts
 # Create main v1 router
 router = APIRouter(prefix="/api/v1")
 
@@ -19,3 +19,5 @@ router.include_router(roles.router)
 router.include_router(laboratories.router)
 router.include_router(users.router)
 router.include_router(files.router)
+router.include_router(manuscripts.router)
+router.include_router(manuscripts.categories_router)
