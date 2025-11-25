@@ -15,6 +15,7 @@ from app.modules.manuscripts.schemas import (
     ManuscriptVersionCreate,
     ManuscriptVersionResponse,
     TimelineEvent,
+    DiscussionCreate,
     DiscussionReplyCreate,
     DiscussionResponse,
     ReviewCommentResponse,
@@ -146,6 +147,30 @@ async def submit_manuscript(
     return await service.submit_manuscript(manuscript_id, current_user.id)
 
 
+@router.post("/{manuscript_id}/archive", response_model=ManuscriptResponse)
+async def archive_manuscript(
+    manuscript_id: int,
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    POST /api/v1/manuscripts/{id}/archive - Archiver un manuscrit
+    """
+    return await service.archive_manuscript(manuscript_id, current_user.id)
+
+
+@router.post("/{manuscript_id}/unarchive", response_model=ManuscriptResponse)
+async def unarchive_manuscript(
+    manuscript_id: int,
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    POST /api/v1/manuscripts/{id}/unarchive - Désarchiver un manuscrit
+    """
+    return await service.unarchive_manuscript(manuscript_id, current_user.id)
+
+
 # ==================== Manuscript Versions ====================
 
 @router.post("/{manuscript_id}/versions", response_model=ManuscriptVersionResponse, status_code=http_status.HTTP_201_CREATED)
@@ -222,6 +247,23 @@ async def get_manuscript_discussions(
     GET /api/v1/manuscripts/{id}/discussions - Récupérer les discussions sur un manuscrit
     """
     return await service.get_manuscript_discussions(manuscript_id, current_user.id)
+
+
+@router.post("/{manuscript_id}/discussions", response_model=DiscussionResponse, status_code=http_status.HTTP_201_CREATED)
+async def create_discussion(
+    manuscript_id: int,
+    discussion_data: DiscussionCreate,
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    POST /api/v1/manuscripts/{id}/discussions - Créer une nouvelle discussion sur un manuscrit
+    """
+    return await service.create_discussion(
+        manuscript_id=manuscript_id,
+        discussion_data=discussion_data,
+        user_id=current_user.id
+    )
 
 
 @router.post("/discussions/{discussion_id}/replies", response_model=DiscussionResponse, status_code=http_status.HTTP_201_CREATED)

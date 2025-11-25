@@ -351,6 +351,57 @@ class ManuscriptRepository:
         )
         return list(result.scalars().unique().all())
 
+    # ==================== Permissions ====================
+
+    async def user_has_access_to_manuscript(self, manuscript_id: int, user_id: int) -> bool:
+        """
+        Check if user has access to a manuscript.
+        Access is granted if user is:
+        - The author
+        - An assigned reviewer
+        - An assigned editor
+        """
+        from app.models.review_assignment import ReviewAssignment
+        from app.models.manuscript_editor import ManuscriptEditor
+
+        # Check if user is the author
+        result = await self.db.execute(
+            select(Manuscript).where(
+                and_(
+                    Manuscript.id == manuscript_id,
+                    Manuscript.author_id == user_id
+                )
+            )
+        )
+        if result.scalar_one_or_none():
+            return True
+
+        # Check if user is an assigned reviewer
+        result = await self.db.execute(
+            select(ReviewAssignment).where(
+                and_(
+                    ReviewAssignment.manuscript_id == manuscript_id,
+                    ReviewAssignment.reviewer_id == user_id
+                )
+            )
+        )
+        if result.scalar_one_or_none():
+            return True
+
+        # Check if user is an assigned editor
+        result = await self.db.execute(
+            select(ManuscriptEditor).where(
+                and_(
+                    ManuscriptEditor.manuscript_id == manuscript_id,
+                    ManuscriptEditor.editor_id == user_id
+                )
+            )
+        )
+        if result.scalar_one_or_none():
+            return True
+
+        return False
+
     # ==================== Categories ====================
 
     async def get_all_categories(self) -> List[Category]:

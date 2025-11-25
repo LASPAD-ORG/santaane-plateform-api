@@ -103,9 +103,9 @@ class ManuscriptService:
                 detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
             )
 
-        # Check ownership (or permissions for reviewers/editors)
-        if manuscript.author_id != user_id:
-            # TODO: Add permission check for reviewers/editors
+        # Check access permissions (author, reviewer, or editor)
+        has_access = await self.repository.user_has_access_to_manuscript(manuscript_id, user_id)
+        if not has_access:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this manuscript"
@@ -164,6 +164,8 @@ class ManuscriptService:
         # Handle file uploads
         cover_image_path = None
         if cover_image:
+            # Validate cover image format
+            self._validate_file_format(cover_image, "cover")
             cover_image_path = await self._save_upload_file(
                 cover_image,
                 manuscript.id,
@@ -171,6 +173,8 @@ class ManuscriptService:
             )
 
         if manuscript_file:
+            # Validate manuscript file format (PDF or DOCX)
+            self._validate_file_format(manuscript_file, "manuscript")
             file_path = await self._save_upload_file(
                 manuscript_file,
                 manuscript.id,
@@ -273,7 +277,7 @@ class ManuscriptService:
         )
 
     async def delete_manuscript(self, manuscript_id: int, user_id: int) -> DeleteManuscriptResponse:
-        """Delete a manuscript (only drafts)"""
+        """Delete a manuscript (only drafts) and its associated files"""
         logger.info(f"Deleting manuscript ID: {manuscript_id}")
 
         # Check manuscript exists and user owns it
@@ -290,13 +294,27 @@ class ManuscriptService:
                 detail="Not authorized to delete this manuscript"
             )
 
-        # Delete
+        # Get all files associated with this manuscript before deletion
+        files = await self.repository.get_manuscript_files(manuscript_id)
+
+        # Delete manuscript from database
         success = await self.repository.delete(manuscript_id)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only draft manuscripts can be deleted"
             )
+
+        # Delete physical files
+        upload_dir = "app/uploads"
+        for file in files:
+            file_path = os.path.join(upload_dir, file.file_path)
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    logger.info(f"Deleted file: {file_path}")
+            except Exception as e:
+                logger.warning(f"Failed to delete file {file_path}: {str(e)}")
 
         return DeleteManuscriptResponse(message="Manuscrit supprimé avec succès")
 
@@ -328,6 +346,106 @@ class ManuscriptService:
             message="Manuscrit soumis avec succès pour évaluation"
         )
 
+    async def archive_manuscript(self, manuscript_id: int, user_id: int) -> ManuscriptResponse:
+        """Archive a manuscript"""
+        logger.info(f"Archiving manuscript ID: {manuscript_id}")
+
+        # Check manuscript exists and user owns it
+        manuscript = await self.repository.get_by_id(manuscript_id)
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        if manuscript.author_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to archive this manuscript"
+            )
+
+        # Archive
+        archived_manuscript = await self.repository.update(
+            manuscript_id,
+            {"is_archived": True}
+        )
+
+        # Get cover image
+        files = await self.repository.get_manuscript_files(manuscript_id)
+        cover_image = None
+        for file in files:
+            if "cover" in file.file_name.lower():
+                cover_image = f"/uploads/{file.file_path}"
+                break
+
+        return ManuscriptResponse(
+            id=archived_manuscript.id,
+            title=archived_manuscript.title,
+            abstract=archived_manuscript.abstract,
+            keywords=archived_manuscript.keywords,
+            authorId=archived_manuscript.author_id,
+            authorName=archived_manuscript.author.full_name,
+            categoryId=archived_manuscript.category_id,
+            categoryName=archived_manuscript.category.name if archived_manuscript.category else None,
+            status=archived_manuscript.status,
+            submittedAt=archived_manuscript.submitted_at,
+            version=archived_manuscript.version,
+            isArchived=archived_manuscript.is_archived,
+            coverImage=cover_image,
+            createdAt=archived_manuscript.created_at,
+            updatedAt=archived_manuscript.updated_at
+        )
+
+    async def unarchive_manuscript(self, manuscript_id: int, user_id: int) -> ManuscriptResponse:
+        """Unarchive a manuscript"""
+        logger.info(f"Unarchiving manuscript ID: {manuscript_id}")
+
+        # Check manuscript exists and user owns it
+        manuscript = await self.repository.get_by_id(manuscript_id)
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        if manuscript.author_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to unarchive this manuscript"
+            )
+
+        # Unarchive
+        unarchived_manuscript = await self.repository.update(
+            manuscript_id,
+            {"is_archived": False}
+        )
+
+        # Get cover image
+        files = await self.repository.get_manuscript_files(manuscript_id)
+        cover_image = None
+        for file in files:
+            if "cover" in file.file_name.lower():
+                cover_image = f"/uploads/{file.file_path}"
+                break
+
+        return ManuscriptResponse(
+            id=unarchived_manuscript.id,
+            title=unarchived_manuscript.title,
+            abstract=unarchived_manuscript.abstract,
+            keywords=unarchived_manuscript.keywords,
+            authorId=unarchived_manuscript.author_id,
+            authorName=unarchived_manuscript.author.full_name,
+            categoryId=unarchived_manuscript.category_id,
+            categoryName=unarchived_manuscript.category.name if unarchived_manuscript.category else None,
+            status=unarchived_manuscript.status,
+            submittedAt=unarchived_manuscript.submitted_at,
+            version=unarchived_manuscript.version,
+            isArchived=unarchived_manuscript.is_archived,
+            coverImage=cover_image,
+            createdAt=unarchived_manuscript.created_at,
+            updatedAt=unarchived_manuscript.updated_at
+        )
+
     # ==================== Manuscript Versions ====================
 
     async def upload_new_version(
@@ -354,7 +472,8 @@ class ManuscriptService:
                 detail="Not authorized to upload version for this manuscript"
             )
 
-        # Save file
+        # Validate and save file
+        self._validate_file_format(manuscript_file, "version")
         file_path = await self._save_upload_file(manuscript_file, manuscript_id, "version")
 
         # Create version
@@ -391,6 +510,14 @@ class ManuscriptService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        # Verify user has access (author, reviewer, or editor)
+        has_access = await self.repository.user_has_access_to_manuscript(manuscript_id, user_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this manuscript"
             )
 
         versions = await self.repository.get_versions(manuscript_id)
@@ -439,6 +566,14 @@ class ManuscriptService:
                 detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
             )
 
+        # Verify user has access
+        has_access = await self.repository.user_has_access_to_manuscript(manuscript_id, user_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this manuscript"
+            )
+
         timeline = await self.repository.get_timeline(manuscript_id)
 
         return [TimelineEvent(**event) for event in timeline]
@@ -455,6 +590,14 @@ class ManuscriptService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        # Verify user has access
+        has_access = await self.repository.user_has_access_to_manuscript(manuscript_id, user_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this manuscript"
             )
 
         discussions = await self.repository.get_discussions(manuscript_id)
@@ -499,6 +642,51 @@ class ManuscriptService:
             ))
 
         return discussion_responses
+
+    async def create_discussion(
+        self,
+        manuscript_id: int,
+        discussion_data: DiscussionCreate,
+        user_id: int
+    ) -> DiscussionResponse:
+        """Create a new discussion on a manuscript"""
+        logger.info(f"Creating discussion on manuscript ID: {manuscript_id}")
+
+        # Check manuscript exists
+        manuscript = await self.repository.get_by_id(manuscript_id)
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        # Create discussion
+        discussion = await self.repository.create_discussion(
+            manuscript_id=manuscript_id,
+            user_id=user_id,
+            subject=discussion_data.subject,
+            message=discussion_data.message,
+            parent_id=None,
+            is_internal=False
+        )
+
+        # Get user role
+        user_role = "Auteur" if user_id == manuscript.author_id else "Évaluateur"
+
+        return DiscussionResponse(
+            id=discussion.id,
+            manuscriptId=discussion.manuscript_id,
+            userId=discussion.user_id,
+            userName=discussion.user.full_name,
+            userRole=user_role,
+            parentId=discussion.parent_id,
+            subject=discussion.subject,
+            message=discussion.message,
+            isInternal=discussion.is_internal,
+            createdAt=discussion.created_at,
+            updatedAt=discussion.updated_at,
+            replies=[]
+        )
 
     async def reply_to_discussion(
         self,
@@ -559,6 +747,14 @@ class ManuscriptService:
                 detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
             )
 
+        # Verify user has access
+        has_access = await self.repository.user_has_access_to_manuscript(manuscript_id, user_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this manuscript"
+            )
+
         comments = await self.repository.get_review_comments(manuscript_id)
 
         # Transform to response format
@@ -583,6 +779,71 @@ class ManuscriptService:
         return comment_responses
 
     # ==================== Helper Methods ====================
+
+    def _validate_file_format(self, upload_file: UploadFile, file_type: str) -> None:
+        """
+        Validate file format (PDF or DOCX only).
+
+        Args:
+            upload_file: The uploaded file
+            file_type: Type of file (cover, manuscript, version)
+
+        Raises:
+            HTTPException: If file format is not allowed
+        """
+        allowed_extensions = {'.pdf', '.docx', '.doc'}
+        allowed_mimetypes = {
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/msword'
+        }
+
+        # Get file extension
+        filename = upload_file.filename.lower()
+        file_ext = None
+        for ext in allowed_extensions:
+            if filename.endswith(ext):
+                file_ext = ext
+                break
+
+        # Check extension
+        if not file_ext:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Format de fichier non autorisé. Formats acceptés: PDF, DOCX, DOC"
+            )
+
+        # Check mimetype if available
+        if upload_file.content_type and upload_file.content_type not in allowed_mimetypes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Type MIME non autorisé: {upload_file.content_type}. Formats acceptés: PDF, DOCX, DOC"
+            )
+
+        # Additional validation for cover images (should be images, not documents)
+        if file_type == "cover":
+            image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+            image_mimetypes = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+
+            # Check if it's an image
+            is_image = any(filename.endswith(ext) for ext in image_extensions)
+            if upload_file.content_type and upload_file.content_type not in image_mimetypes:
+                is_image = False
+
+            if not is_image:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="L'image de couverture doit être au format JPG, PNG, GIF ou WEBP"
+                )
+
+        # Validate file size (max 50MB for manuscripts, 5MB for cover images)
+        max_size = 5 * 1024 * 1024 if file_type == "cover" else 50 * 1024 * 1024
+        if upload_file.size and upload_file.size > max_size:
+            max_size_mb = max_size / (1024 * 1024)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Fichier trop volumineux. Taille maximale: {max_size_mb}MB"
+            )
 
     async def _save_upload_file(self, upload_file: UploadFile, manuscript_id: int, file_type: str) -> str:
         """Save an uploaded file and return the file path"""

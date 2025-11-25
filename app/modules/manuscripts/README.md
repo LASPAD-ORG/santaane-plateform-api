@@ -21,6 +21,8 @@ Ce module gère l'intégralité du cycle de vie des manuscrits scientifiques :
 - `PUT /api/v1/manuscripts/{id}` - Mettre à jour un manuscrit (brouillon uniquement)
 - `DELETE /api/v1/manuscripts/{id}` - Supprimer un manuscrit (brouillon uniquement)
 - `POST /api/v1/manuscripts/{id}/submit` - Soumettre pour évaluation
+- `POST /api/v1/manuscripts/{id}/archive` - Archiver un manuscrit
+- `POST /api/v1/manuscripts/{id}/unarchive` - Désarchiver un manuscrit
 
 ### Versions
 
@@ -30,7 +32,8 @@ Ce module gère l'intégralité du cycle de vie des manuscrits scientifiques :
 ### Timeline et discussions
 
 - `GET /api/v1/manuscripts/{id}/timeline` - Historique du manuscrit
-- `GET /api/v1/manuscripts/{id}/discussions` - Discussions
+- `GET /api/v1/manuscripts/{id}/discussions` - Liste des discussions
+- `POST /api/v1/manuscripts/{id}/discussions` - Créer une nouvelle discussion
 - `POST /api/v1/manuscripts/discussions/{discussionId}/replies` - Répondre à une discussion
 
 ### Commentaires d'évaluation
@@ -112,9 +115,23 @@ Les manuscrits passent par différents statuts (définis dans `app/models/enums.
 ## Sécurité et permissions
 
 - Tous les endpoints nécessitent une authentification JWT
-- Seul l'auteur peut modifier/supprimer ses manuscrits
+- **Auteurs** : peuvent créer, modifier, supprimer (brouillons uniquement), archiver leurs manuscrits
+- **Évaluateurs** : ont accès en lecture aux manuscrits qui leur sont assignés
+- **Éditeurs** : ont accès en lecture aux manuscrits qui leur sont assignés
 - Seuls les brouillons peuvent être modifiés/supprimés
-- Les évaluateurs ont accès en lecture aux manuscrits assignés
+- L'accès aux manuscrits est vérifié pour chaque opération (auteur, évaluateur assigné, ou éditeur assigné)
+
+## Validation des fichiers
+
+### Formats autorisés
+- **Manuscrits** : PDF (.pdf), Word (.doc, .docx)
+- **Images de couverture** : JPG, PNG, GIF, WEBP
+
+### Tailles maximales
+- **Manuscrits** : 50 MB
+- **Images de couverture** : 5 MB
+
+La validation vérifie à la fois l'extension du fichier et le type MIME pour garantir la sécurité.
 
 ## Fichiers
 
@@ -123,15 +140,22 @@ Les fichiers uploadés sont stockés dans `app/uploads/` avec le format :
 manuscript_{manuscript_id}_{file_type}_{timestamp}_{original_filename}
 ```
 
+Lors de la suppression d'un manuscrit, tous les fichiers associés sont automatiquement supprimés du disque.
+
+## Archivage
+
+Les manuscrits peuvent être archivés/désarchivés via :
+- `POST /api/v1/manuscripts/{id}/archive`
+- `POST /api/v1/manuscripts/{id}/unarchive`
+
+Les manuscrits archivés restent accessibles mais peuvent être filtrés dans les listes.
+
 ## TODO / Améliorations futures
 
 - [ ] Ajouter le système de notifications complet
-- [ ] Implémenter la création de discussions (actuellement seulement réponses)
-- [ ] Ajouter les permissions pour évaluateurs/éditeurs
-- [ ] Gérer l'archivage des manuscrits
-- [ ] Ajouter la validation des formats de fichiers
-- [ ] Implémenter la suppression physique des fichiers
 - [ ] Ajouter des tests unitaires et d'intégration
+- [ ] Implémenter la recherche full-text
+- [ ] Ajouter la génération de PDF à partir des versions Word
 
 ## Exemples d'utilisation
 
