@@ -2,11 +2,12 @@
 Enumerations for the Santaane Platform API
 All status and type enums used across the application models
 """
-from enum import Enum
+from enum import Enum, unique
 
 
 # ==================== Manuscript Related Enums ====================
 
+@unique
 class ManuscriptStatus(str, Enum):
     """Manuscript lifecycle status"""
     DRAFT = "draft"
@@ -19,7 +20,7 @@ class ManuscriptStatus(str, Enum):
     PUBLISHED = "published"
     WITHDRAWN = "withdrawn"
 
-
+@unique
 class ManuscriptFileType(str, Enum):
     """Types of files attached to manuscripts"""
     PDF = "pdf"
@@ -35,6 +36,7 @@ class ManuscriptFileType(str, Enum):
 
 # ==================== Editor Related Enums ====================
 
+@unique
 class EditorRole(str, Enum):
     """Roles for editors in laboratories and manuscripts"""
     CHIEF_EDITOR = "chief_editor"
@@ -46,6 +48,7 @@ class EditorRole(str, Enum):
 
 # ==================== Review Related Enums ====================
 
+@unique
 class ReviewAssignmentStatus(str, Enum):
     """Status of review assignments"""
     PENDING = "pending"
@@ -55,15 +58,22 @@ class ReviewAssignmentStatus(str, Enum):
     COMPLETED = "completed"
     OVERDUE = "overdue"
 
-
+@unique
 class ReviewRecommendation(str, Enum):
-    """Reviewer's recommendation on manuscript"""
-    ACCEPT = "accept"
-    MINOR_REVISION = "minor_revision"
+    """
+    Reviewer's recommendation on manuscript.
+    Mise à jour pour correspondre aux 3 possibilités de la grille Global Africa :
+    1. Accepté sous réserve de validation
+    2. Soumission d'une nouvelle version (Révisions Majeures)
+    3. Refusé
+    """
+    # 1. Accepté sous réserve de validation par le comité de rédaction
+    ACCEPTED_WITH_VALIDATION = "accepted_with_validation" 
     MAJOR_REVISION = "major_revision"
     REJECT = "reject"
+    
 
-
+@unique
 class ReviewDecisionType(str, Enum):
     """Editorial decision on manuscript"""
     ACCEPT = "accept"
@@ -71,10 +81,22 @@ class ReviewDecisionType(str, Enum):
     MAJOR_REVISION = "major_revision"
     REJECT = "reject"
     WITHDRAWN = "withdrawn"
+    
+
+@unique
+class ReviewCriteria(str, Enum):
+    """
+    Critères spécifiques de la grille d'évaluation de Global Africa.
+    """
+    ORIGINALITY_CONCLUSIONS = "originality_conclusions" 
+    METHODOLOGY_RIGOR_REFERENCES = "methodology_rigor_references" 
+    EMPIRICAL_THEORY_APPROACH = "empirical_theory_approach" 
+    PRESENTATION_STRUCTURE_CLARITY = "presentation_structure_clarity"
 
 
 # ==================== Mentorship Related Enums ====================
 
+@unique
 class MentorshipStatus(str, Enum):
     """Status of mentorship relationships"""
     ACTIVE = "active"
@@ -82,7 +104,7 @@ class MentorshipStatus(str, Enum):
     CANCELLED = "cancelled"
     ON_HOLD = "on_hold"
 
-
+@unique
 class MentorshipFeedbackType(str, Enum):
     """Types of mentorship feedback"""
     MILESTONE = "milestone"
@@ -91,7 +113,7 @@ class MentorshipFeedbackType(str, Enum):
     INTERIM_REVIEW = "interim_review"
     IMPROVEMENT_PLAN = "improvement_plan"
 
-
+@unique
 class MentorshipActivityType(str, Enum):
     """Types of mentorship activities"""
     COMMENT_ADDED = "comment_added"
@@ -107,6 +129,7 @@ class MentorshipActivityType(str, Enum):
 
 # ==================== User Related Enums ====================
 
+@unique
 class LanguageProficiency(str, Enum):
     """Language proficiency levels"""
     NATIVE = "native"
@@ -118,6 +141,7 @@ class LanguageProficiency(str, Enum):
 
 # ==================== System Related Enums ====================
 
+@unique
 class UserStatus(str, Enum):
     """User account status"""
     ACTIVE = "active"
