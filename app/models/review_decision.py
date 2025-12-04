@@ -4,7 +4,7 @@ ReviewDecision model - Editorial decisions on manuscripts
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
 from datetime import datetime
-from app.models.enums import ReviewDecisionType
+from app.models.enums import ReviewDecisionType 
 
 if TYPE_CHECKING:
     from app.models.manuscript import Manuscript
@@ -20,14 +20,13 @@ class ReviewDecision(SQLModel, table=True):
 
     decision: ReviewDecisionType = Field(nullable=False, index=True)
 
-    decision_letter: Optional[str] = Field(default=None)  # Letter to author
-    internal_notes: Optional[str] = Field(default=None)  # Internal editor notes
+    decision_letter: Optional[str] = Field(default=None) 
+    internal_notes: Optional[str] = Field(default=None)  
 
     decided_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
-    # Relationships
     manuscript: "Manuscript" = Relationship(
         sa_relationship_kwargs={"foreign_keys": "[ReviewDecision.manuscript_id]"}
     )
