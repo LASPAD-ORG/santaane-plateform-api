@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.review_assignment import ReviewAssignment
     from app.models.review_decision import ReviewDecision
     from app.models.mentorship import Mentorship
+    from app.models.varia import Varia
 
 
 class Manuscript(SQLModel, table=True):
@@ -29,6 +30,9 @@ class Manuscript(SQLModel, table=True):
     # Author and category
     author_id: int = Field(foreign_key="users.id", nullable=False, index=True)
     category_id: Optional[int] = Field(default=None, foreign_key="categories.id")
+    
+    # Lien vers le Varia (Thématique)
+    varia_id: Optional[int] = Field(default=None, foreign_key="varias.id")
 
     # Lifecycle status
     status: ManuscriptStatus = Field(default=ManuscriptStatus.DRAFT, nullable=False, index=True)
@@ -51,6 +55,8 @@ class Manuscript(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "[Manuscript.author_id]"}
     )
     category: Optional["Category"] = Relationship(back_populates="manuscripts")
+    # NOUVELLE RELATION : Varia
+    varia: Optional["Varia"] = Relationship(back_populates="manuscripts")
     manuscript_editors: List["ManuscriptEditor"] = Relationship(back_populates="manuscript")
     manuscript_files: List["ManuscriptFile"] = Relationship(back_populates="manuscript")
     manuscript_versions: List["ManuscriptVersion"] = Relationship(back_populates="manuscript")
