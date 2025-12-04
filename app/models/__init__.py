@@ -41,6 +41,7 @@ from app.models.mentorship_comment import MentorshipComment
 from app.models.mentorship_feedback import MentorshipFeedback
 from app.models.mentorship_activity_log import MentorshipActivityLog
 
+from app.models.varia import Varia
 
 # Add all new models to this list and to __all__
 __all__ = [
@@ -78,4 +79,6 @@ __all__ = [
     "MentorshipComment",
     "MentorshipFeedback",
     "MentorshipActivityLog",
+    # Structure Varia/Thématique
+    "Varia", 
 ]
