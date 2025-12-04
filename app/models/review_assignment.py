@@ -20,7 +20,6 @@ class ReviewAssignment(SQLModel, table=True):
     reviewer_id: int = Field(foreign_key="users.id", nullable=False, index=True)
     assigned_by: int = Field(foreign_key="users.id", nullable=False)
 
-    # Review tracking
     status: ReviewAssignmentStatus = Field(default=ReviewAssignmentStatus.PENDING, nullable=False, index=True)
 
     due_date: Optional[datetime] = Field(default=None)
@@ -28,14 +27,12 @@ class ReviewAssignment(SQLModel, table=True):
     declined_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
 
-    # Metadata
     invitation_message: Optional[str] = Field(default=None)
     decline_reason: Optional[str] = Field(default=None)
-    is_anonymous: bool = Field(default=True, nullable=False)  # Anonymous review
+    is_anonymous: bool = Field(default=True, nullable=False)  
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
-    # Relationships
     manuscript: "Manuscript" = Relationship(back_populates="review_assignments")
     reviewer: "User" = Relationship(
         back_populates="review_assignments",
