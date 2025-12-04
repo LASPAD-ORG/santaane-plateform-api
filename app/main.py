@@ -19,6 +19,7 @@ from app.middleware.exception_handler import (
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.cors import setup_cors
 from app.api.v1.router import router as api_v1_router
+from app.modules.varia import routes as varia_routes 
 
 # Setup logging
 setup_logging()
@@ -58,7 +59,8 @@ app.add_exception_handler(Exception, general_exception_handler)
 
 # Include API v1 router
 app.include_router(api_v1_router)
-
+# Inclure le routeur du module Varia
+app.include_router(varia_routes.router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup_event():
