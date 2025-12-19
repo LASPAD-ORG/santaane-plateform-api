@@ -1,3 +1,4 @@
+
 """
 API routes for users module.
 All endpoints require appropriate role-based permissions.
@@ -16,11 +17,33 @@ from app.modules.users.schemas import (
 )
 from app.core.permissions import require_super_admin, get_current_user, require_any_role
 from app.models.user import User
-from app.core.roles import UserRole
+
 from app.schemas.base import PaginatedResponse
 
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+@router.delete(
+    "/{user_id}/hard",
+    summary="Hard delete a user (permanent)",
+    dependencies=[Depends(require_super_admin)]
+)
+async def hard_delete_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service)
+):
+    """
+    Permanently delete a user from the database.
+
+    **Requires:** SUPER_ADMIN role
+
+    **Note:** Users cannot delete their own account.
+
+    **Parameters:**
+    - **user_id**: ID of the user to delete
+    """
+    return await service.hard_delete_user(user_id, current_user)
 
 
 @router.post(

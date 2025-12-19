@@ -21,11 +21,34 @@ from app.core.logging import logger
 from app.schemas.base import PaginatedResponse
 
 
+
 class UserService:
     """Service for user business logic."""
 
     def __init__(self, repository: UserRepository):
         self.repository = repository
+
+    async def hard_delete_user(
+        self,
+        user_id: int,
+        current_user: User
+    ) -> dict:
+        """Hard delete a user (permanent removal)."""
+        # Prevent self-deletion
+        if user_id == current_user.id:
+            from fastapi import HTTPException, status
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete your own account"
+            )
+        success = await self.repository.hard_delete(user_id)
+        if not success:
+            from fastapi import HTTPException, status
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User with ID {user_id} not found"
+            )
+        return {"message": "User permanently deleted"}
 
     async def create_user(
         self,
@@ -181,6 +204,12 @@ class UserService:
         current_user: User
     ) -> UserResponse:
         """Activate or deactivate a user."""
+        # Prevent self-deactivation
+        if user_id == current_user.id and data.is_active is False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You cannot deactivate your own account."
+            )
         user = await self.repository.set_active_status(user_id, data.is_active)
         if not user:
             raise HTTPException(

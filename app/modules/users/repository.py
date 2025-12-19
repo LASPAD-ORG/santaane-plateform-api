@@ -13,11 +13,22 @@ from app.core.logging import logger
 from app.modules.users.schemas import UserCreate, UserUpdate
 
 
+
 class UserRepository:
     """Repository for user-related database operations."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def hard_delete(self, user_id: int) -> bool:
+        """Delete a user permanently from the database."""
+        user = await self.get_by_id(user_id)
+        if not user:
+            return False
+        await self.db.delete(user)
+        await self.db.commit()
+        logger.info(f"User hard deleted: {user.email} (ID: {user.id})")
+        return True
 
     async def get_by_id(self, user_id: int) -> Optional[User]:
         """Get user by ID."""
