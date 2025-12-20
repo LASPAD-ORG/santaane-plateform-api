@@ -62,7 +62,7 @@ class AuthService:
         )
 
         logger.info(f"User registered successfully: {user.email}")
-
+        await self.set_default_user_role(user.id)
         return "User created successfully"
 
     async def login_user(self, credentials: UserLogin) -> TokenResponse:
@@ -86,6 +86,14 @@ class AuthService:
             token_type="bearer"
         )
 
+    async def set_default_user_role(self, user_id: int):
+        """Assign default role to newly registered user"""
+        logger.info(f"Assigning default role to user_id: {user_id}")
+
+        default_role_id = 5 
+        await self.repository.assign_default_role_to_user(user_id, default_role_id)
+
+        logger.info(f"Default role assigned to user_id: {user_id}")
     async def get_current_user(self, user_id: int) -> UserResponse:
         """Get current authenticated user details (camelCase)"""
         logger.info(f"Fetching user details for user_id: {user_id}")

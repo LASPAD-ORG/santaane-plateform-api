@@ -86,6 +86,17 @@ class AuthRepository:
         """Check if user exists by email"""
         user = await self.get_user_by_email(email)
         return user is not None
+    
+    async def assign_default_role_to_user(self, user_id: int, default_role_id: int):
+        """Assign a default role to a user"""
+        user_role = UserRole(
+            user_id=user_id,
+            role_id=default_role_id
+        )
+        self.db.add(user_role)
+        await self.db.commit()
+        await self.db.refresh(user_role)
+        return user_role
 
     async def get_user_roles(self, user_id: int) -> list[str]:
         """Get role names for a user"""

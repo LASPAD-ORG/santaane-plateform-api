@@ -36,6 +36,10 @@ class User(SQLModel, table=True):
     profile_photo: Optional[str] = Field(max_length=255, default=None)
     orcid_id: Optional[str] = Field(max_length=50, default=None)
     is_active: bool = Field(default=True, nullable=False)
+    bio: Optional[str] = Field(default=None)
+    position: Optional[str] = Field(default=None)
+    institution: Optional[str] = Field(default=None)
+
     created_at: datetime = Field(
         default_factory=datetime.utcnow,
         nullable=False
