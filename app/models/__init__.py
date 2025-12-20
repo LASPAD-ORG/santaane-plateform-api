@@ -40,6 +40,7 @@ from app.models.mentorship import Mentorship
 from app.models.mentorship_comment import MentorshipComment
 from app.models.mentorship_feedback import MentorshipFeedback
 from app.models.mentorship_activity_log import MentorshipActivityLog
+from app.models.mentor_assignment import MentorAssignment
 
 
 # Add all new models to this list and to __all__
@@ -78,4 +79,5 @@ __all__ = [
     "MentorshipComment",
     "MentorshipFeedback",
     "MentorshipActivityLog",
+    "MentorAssignment",
 ]

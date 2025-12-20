@@ -1,16 +1,18 @@
 """
 assign_auteur_mentor module - Utility functions
-Helper functions and dependencies for assign_auteur_mentor module
+Helper functions and dependencies for mentor assignment module
 """
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.modules.assign_auteur_mentor.repository import Assign_auteur_mentorRepository
-from app.modules.assign_auteur_mentor.service import Assign_auteur_mentorService
+from app.modules.assign_auteur_mentor.repository import MentorAssignmentRepository
+from app.modules.assign_auteur_mentor.service import MentorAssignmentService
 
 
-def get_assign_auteur_mentor_service(db: AsyncSession = Depends(get_db)) -> Assign_auteur_mentorService:
-    """Dependency to get assign_auteur_mentor service instance"""
-    repository = Assign_auteur_mentorRepository(db)
-    return Assign_auteur_mentorService(repository)
+async def get_mentor_assignment_service(
+    db: AsyncSession = Depends(get_db),
+) -> MentorAssignmentService:
+    """Dependency to get mentor assignment service instance"""
+    repository = MentorAssignmentRepository(db)
+    return MentorAssignmentService(repository, db)

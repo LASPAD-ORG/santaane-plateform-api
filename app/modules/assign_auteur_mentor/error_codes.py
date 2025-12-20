@@ -1,14 +1,27 @@
 """
-assign_auteur_mentor module - Error codes
+assign_auteur_mentor module - Error codes for Mentor Assignment
 """
 from enum import Enum
 
 
-class Assign_auteur_mentorErrorCode(str, Enum):
-    """Assign_auteur_mentor module error codes"""
+class MentorAssignmentErrorCode(str, Enum):
+    """Mentor Assignment module error codes"""
 
-    ASSIGN_AUTEUR_MENTOR_NOT_FOUND = "ASSIGN_AUTEUR_MENTOR_NOT_FOUND"
-    ASSIGN_AUTEUR_MENTOR_ALREADY_EXISTS = "ASSIGN_AUTEUR_MENTOR_ALREADY_EXISTS"
-    INVALID_ASSIGN_AUTEUR_MENTOR_DATA = "INVALID_ASSIGN_AUTEUR_MENTOR_DATA"
+    # Not found errors
+    ASSIGNMENT_NOT_FOUND = "ASSIGNMENT_NOT_FOUND"
+    AUTHOR_NOT_FOUND = "AUTHOR_NOT_FOUND"
+    MENTOR_NOT_FOUND = "MENTOR_NOT_FOUND"
 
-    # À compléter - ajouter d'autres codes d'erreur selon les besoins
+    # Role validation errors
+    AUTHOR_INVALID_ROLE = "AUTHOR_INVALID_ROLE"
+    MENTOR_INVALID_ROLE = "MENTOR_INVALID_ROLE"
+    INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS"
+
+    # Business logic errors
+    SAME_USER_ASSIGNMENT = "SAME_USER_ASSIGNMENT"
+    ACTIVE_MENTOR_EXISTS = "ACTIVE_MENTOR_EXISTS"
+    ASSIGNMENT_ALREADY_EXISTS = "ASSIGNMENT_ALREADY_EXISTS"
+    INVALID_ASSIGNMENT_DATA = "INVALID_ASSIGNMENT_DATA"
+    UNAUTHORIZED_OPERATION = "UNAUTHORIZED_OPERATION"
+    ASSIGNMENT_UPDATE_FAILED = "ASSIGNMENT_UPDATE_FAILED"
+    ASSIGNMENT_DELETE_FAILED = "ASSIGNMENT_DELETE_FAILED"

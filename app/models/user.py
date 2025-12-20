@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from app.models.mentorship import Mentorship
     from app.models.mentorship_comment import MentorshipComment
     from app.models.mentorship_activity_log import MentorshipActivityLog
+    from app.models.mentor_assignment import MentorAssignment
 
 
 class User(SQLModel, table=True):
@@ -103,7 +104,7 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "ReviewDecision.decided_by"}
     )
 
-    # Mentorship relationships
+    # Mentorship relationships (Manuscript-based mentorships)
     mentorships_as_mentor: list["Mentorship"] = Relationship(
         back_populates="mentor",
         sa_relationship_kwargs={"foreign_keys": "Mentorship.mentor_id"}
@@ -119,5 +120,19 @@ class User(SQLModel, table=True):
     mentorship_activity_logs: list["MentorshipActivityLog"] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"foreign_keys": "MentorshipActivityLog.user_id"}
+    )
+
+    # Mentor Assignment relationships (Author-Mentor direct assignments)
+    mentor_assignments_as_author: list["MentorAssignment"] = Relationship(
+        back_populates="author",
+        sa_relationship_kwargs={"foreign_keys": "MentorAssignment.author_id"}
+    )
+    mentor_assignments_as_mentor: list["MentorAssignment"] = Relationship(
+        back_populates="mentor",
+        sa_relationship_kwargs={"foreign_keys": "MentorAssignment.mentor_id"}
+    )
+    mentor_assignments_created: list["MentorAssignment"] = Relationship(
+        back_populates="assigner",
+        sa_relationship_kwargs={"foreign_keys": "MentorAssignment.assigned_by"}
     )
 
