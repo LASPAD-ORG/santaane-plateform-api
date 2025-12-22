@@ -62,8 +62,7 @@ class UserRepository:
         email: Optional[str] = None,
         full_name: Optional[str] = None,
         role: Optional[str] = None,
-        is_active: Optional[bool] = None,
-        country_id: Optional[int] = None
+        is_active: Optional[bool] = None
     ) -> Tuple[List[User], int]:
         """
         Get all users with pagination and filtering.
@@ -87,9 +86,6 @@ class UserRepository:
 
         if is_active is not None:
             filters.append(User.is_active == is_active)
-
-        if country_id:
-            filters.append(User.country_id == country_id)
 
         if role:
             # Filter by role name - need to join with user_roles and roles

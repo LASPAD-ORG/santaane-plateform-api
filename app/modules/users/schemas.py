@@ -14,8 +14,6 @@ class UserBase(BaseSchema):
     """Base user schema with common fields."""
     email: EmailStr = Field(..., description="User email address")
     full_name: str = Field(..., min_length=1, max_length=150, description="User full name", alias="fullName")
-    country_id: Optional[int] = Field(None, description="Country ID", alias="countryId")
-    city_id: Optional[int] = Field(None, description="City ID", alias="cityId")
     orcid_id: Optional[str] = Field(None, max_length=50, description="ORCID identifier", alias="orcidId")
 
 
@@ -40,10 +38,18 @@ class UserUpdate(BaseSchema):
     """Schema for updating an existing user."""
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(None, min_length=1, max_length=150, alias="fullName")
-    country_id: Optional[int] = Field(None, alias="countryId")
-    city_id: Optional[int] = Field(None, alias="cityId")
     profile_photo: Optional[str] = Field(None, max_length=255, alias="profilePhoto")
     orcid_id: Optional[str] = Field(None, max_length=50, alias="orcidId")
+
+
+class ProfileUpdate(BaseSchema):
+    """Schema for updating own profile (users cannot change their own email)."""
+    full_name: str | None = Field(default=None, min_length=1, max_length=150, alias="fullName")
+    profile_photo: str | None = Field(default=None, max_length=255, alias="profilePhoto")
+    orcid_id: str | None = Field(default=None, max_length=50, alias="orcidId")
+    bio: str | None = Field(default=None, description="User biography")
+    position: str | None = Field(default=None, max_length=150, description="Current position")
+    institution: str | None = Field(default=None, max_length=255, description="Institution name")
 
 
 class PasswordChange(BaseSchema):
@@ -109,4 +115,3 @@ class UserFilters(BaseSchema):
     full_name: Optional[str] = Field(None, description="Filter by name (partial match)", alias="fullName")
     role: Optional[str] = Field(None, description="Filter by role name")
     is_active: Optional[bool] = Field(None, description="Filter by active status", alias="isActive")
-    country_id: Optional[int] = Field(None, description="Filter by country", alias="countryId")

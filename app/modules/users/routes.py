@@ -10,6 +10,7 @@ from app.modules.users.utils import get_user_service
 from app.modules.users.schemas import (
     UserCreate,
     UserUpdate,
+    ProfileUpdate,
     UserResponse,
     UserWithRolesResponse,
     PasswordChange,
@@ -22,6 +23,54 @@ from app.schemas.base import PaginatedResponse
 
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+
+@router.get(
+    "/me",
+    response_model=UserWithRolesResponse,
+    summary="Get own profile"
+)
+async def get_my_profile(
+    current_user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service)
+):
+    """
+    Get authenticated user's own profile with roles.
+
+    **Requires:** Authentication
+    """
+    return await service.get_user(current_user.id, current_user)
+
+
+@router.put(
+    "/me/profile",
+    response_model=UserResponse,
+    summary="Update own profile"
+)
+async def update_my_profile(
+    data: ProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service)
+):
+    """
+    Update authenticated user's own profile.
+
+    **Requires:** Authentication
+
+    **Note:** Users cannot change their own email through this endpoint.
+
+    **Parameters:**
+    - **fullName**: Optional new full name
+    - **countryId**: Optional new country ID
+    - **cityId**: Optional new city ID
+    - **profilePhoto**: Optional new profile photo URL
+    - **orcidId**: Optional new ORCID identifier
+    - **bio**: Optional biography
+    - **position**: Optional current position
+    - **institution**: Optional institution name
+    """
+    return await service.update_own_profile(current_user.id, data)
+
 
 @router.delete(
     "/{user_id}/hard",
@@ -88,7 +137,6 @@ async def list_users(
     full_name: Optional[str] = Query(None, description="Filter by name (partial match)", alias="fullName"),
     role: Optional[str] = Query(None, description="Filter by role name"),
     is_active: Optional[bool] = Query(None, description="Filter by active status", alias="isActive"),
-    country_id: Optional[int] = Query(None, description="Filter by country", alias="countryId"),
     service: UserService = Depends(get_user_service)
 ):
     """
@@ -103,7 +151,6 @@ async def list_users(
     - **fullName**: Optional filter by name (partial match)
     - **role**: Optional filter by role name
     - **isActive**: Optional filter by active status
-    - **countryId**: Optional filter by country
     """
     return await service.list_users(
         skip=skip,
@@ -111,8 +158,7 @@ async def list_users(
         email=email,
         full_name=full_name,
         role=role,
-        is_active=is_active,
-        country_id=country_id
+        is_active=is_active
     )
 
 

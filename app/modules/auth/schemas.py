@@ -12,8 +12,6 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     fullName: str 
-    countryId: Optional[int] = Field(None, gt=0)
-    cityId: Optional[int] = Field(None, gt=0)
     profilePhoto: Optional[str] = None
     orcidId: Optional[str] = None
 
@@ -29,8 +27,6 @@ class UserResponse(BaseModel):
     id: int
     email: EmailStr
     fullName: str
-    countryName: Optional[str] = None
-    cityName: Optional[str] = None
     profilePhoto: Optional[str] = None
     orcidId: Optional[str] = None
     roles: list[str] = []

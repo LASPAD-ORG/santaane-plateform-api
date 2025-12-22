@@ -8,6 +8,7 @@ from app.modules.users.repository import UserRepository
 from app.modules.users.schemas import (
     UserCreate,
     UserUpdate,
+    ProfileUpdate,
     UserResponse,
     UserWithRolesResponse,
     UserDetailResponse,
@@ -106,8 +107,7 @@ class UserService:
         email: Optional[str] = None,
         full_name: Optional[str] = None,
         role: Optional[str] = None,
-        is_active: Optional[bool] = None,
-        country_id: Optional[int] = None
+        is_active: Optional[bool] = None
     ) -> PaginatedResponse[UserWithRolesResponse]:
         """List all users with pagination and filtering."""
         users, total = await self.repository.get_all(
@@ -116,8 +116,7 @@ class UserService:
             email=email,
             full_name=full_name,
             role=role,
-            is_active=is_active,
-            country_id=country_id
+            is_active=is_active
         )
 
         # Convert users with roles
@@ -165,6 +164,41 @@ class UserService:
                 detail=f"User with ID {user_id} not found"
             )
 
+        return UserResponse.model_validate(user)
+
+    async def update_own_profile(
+        self,
+        user_id: int,
+        data: ProfileUpdate
+    ) -> UserResponse:
+        """Update own profile (users cannot change email)."""
+        # Get user first
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User with ID {user_id} not found"
+            )
+        
+        # Update all fields manually
+        if data.full_name is not None:
+            user.full_name = data.full_name
+        if data.profile_photo is not None:
+            user.profile_photo = data.profile_photo
+        if data.orcid_id is not None:
+            user.orcid_id = data.orcid_id
+        if data.bio is not None:
+            user.bio = data.bio
+        if data.position is not None:
+            user.position = data.position
+        if data.institution is not None:
+            user.institution = data.institution
+        
+        # Commit changes
+        await self.repository.db.commit()
+        await self.repository.db.refresh(user)
+
+        logger.info(f"Profile updated for user: {user.email} (ID: {user.id})")
         return UserResponse.model_validate(user)
 
     async def change_password(

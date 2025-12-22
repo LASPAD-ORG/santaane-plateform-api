@@ -13,8 +13,6 @@ from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 if TYPE_CHECKING:
     from app.models.manuscript import Manuscript
     from app.models.user_role import UserRole
-    from app.models.country import Country
-    from app.models.city import City
 
 
 class User(SQLModel, table=True):
@@ -31,8 +29,6 @@ class User(SQLModel, table=True):
     bio: Optional[str] = Field(default=None)
     position: Optional[str] = Field(default=None)
     institution: Optional[str] = Field(default=None)
-    country_id: Optional[int] = Field(default=None, foreign_key="countries.id")
-    city_id: Optional[int] = Field(default=None, foreign_key="cities.id")
 
     created_at: datetime = Field(
         default_factory=datetime.utcnow,
@@ -67,6 +63,3 @@ class User(SQLModel, table=True):
         back_populates="user",
         sa_relationship_kwargs={"foreign_keys": "[UserRole.user_id]"}
     )
-
-    country: Mapped[Optional["Country"]] = Relationship()
-    city: Mapped[Optional["City"]] = Relationship()

@@ -29,33 +29,11 @@ class AuthService:
                 detail=AuthErrorCode.EMAIL_ALREADY_EXISTS
             )
 
-        # Validate country_id if provided
-        if user_data.countryId is not None:
-            country = await self.repository.get_country_by_id(user_data.countryId)
-            if not country:
-                logger.warning(f"Registration failed: invalid country_id {user_data.countryId}")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=AuthErrorCode.INVALID_COUNTRY_ID
-                )
-
-        # Validate city_id if provided
-        if user_data.cityId is not None:
-            city = await self.repository.get_city_by_id(user_data.cityId)
-            if not city:
-                logger.warning(f"Registration failed: invalid city_id {user_data.cityId}")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=AuthErrorCode.INVALID_CITY_ID
-                )
-
         hashed_password = hash_password(user_data.password)
         user = await self.repository.create_user(
             email=user_data.email,
             full_name=user_data.fullName,
             hashed_password=hashed_password,
-            country_id=user_data.countryId,
-            city_id=user_data.cityId,
             profile_photo=user_data.profilePhoto,
             orcid_id=user_data.orcidId
         )
@@ -106,10 +84,6 @@ class AuthService:
                 detail=AuthErrorCode.USER_NOT_FOUND
             )
 
-        # Extract country and city names from loaded relationships
-        country_name = user.country.name if user.country else None
-        city_name = user.city.name if user.city else None
-
         # Get user roles
         roles = await self.repository.get_user_roles(user_id)
 
@@ -117,8 +91,6 @@ class AuthService:
             id=user.id,
             email=user.email,
             fullName=user.full_name,
-            countryName=country_name,
-            cityName=city_name,
             profilePhoto=user.profile_photo,
             orcidId=user.orcid_id,
             roles=roles,
