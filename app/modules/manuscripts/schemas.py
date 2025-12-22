@@ -25,13 +25,8 @@ class ManuscriptResponse(BaseModel):
     title: str
     abstract: Optional[str] = None
     keywords: Optional[str] = None
-    authorId: int
-    authorName: str
-    themeId: Optional[int] = None
     themeName: Optional[str] = None
-    sectionId: int
     sectionName: str
-    languageId: int
     languageName: str
     status: ManuscriptStatus
     pdfFilename: str

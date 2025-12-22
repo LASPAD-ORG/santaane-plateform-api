@@ -47,9 +47,11 @@ class Manuscript(SQLModel, table=True):
 
     # --- Timestamps ---
     created_at: datetime = Field(
+        default_factory=datetime.utcnow,
         sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     )
     updated_at: datetime = Field(
+        default_factory=datetime.utcnow,
         sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     )
 
