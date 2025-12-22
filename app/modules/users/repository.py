@@ -120,8 +120,6 @@ class UserRepository:
             email=data.email,
             password_hash=password_hash,
             full_name=data.full_name,
-            country_id=data.country_id,
-            city_id=data.city_id,
             orcid_id=data.orcid_id,
             email_verified=False,
             is_active=True
