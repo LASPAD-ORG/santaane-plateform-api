@@ -126,7 +126,6 @@ class UserRepository:
             full_name=data.full_name,
             country_id=data.country_id,
             city_id=data.city_id,
-            timezone=data.timezone,
             orcid_id=data.orcid_id,
             email_verified=False,
             is_active=True
