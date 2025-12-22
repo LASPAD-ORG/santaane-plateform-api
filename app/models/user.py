@@ -1,9 +1,8 @@
 """
 User model - Journal users (authors, evaluators, editors)
 """
-from __future__ import annotations
-
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy.orm import Mapped
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
 from sqlalchemy import Column, DateTime, func
@@ -14,6 +13,8 @@ from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 if TYPE_CHECKING:
     from app.models.manuscript import Manuscript
     from app.models.user_role import UserRole
+    from app.models.country import Country
+    from app.models.city import City
 
 
 class User(SQLModel, table=True):
@@ -30,17 +31,25 @@ class User(SQLModel, table=True):
     bio: Optional[str] = Field(default=None)
     position: Optional[str] = Field(default=None)
     institution: Optional[str] = Field(default=None)
+    country_id: Optional[int] = Field(default=None, foreign_key="countries.id")
+    city_id: Optional[int] = Field(default=None, foreign_key="cities.id")
 
-    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False))
-    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False))
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    )
 
     # Relations
-    manuscripts: Manuscript = Relationship(
+    manuscripts: Mapped[List["Manuscript"]] = Relationship(
         back_populates="author",
         sa_relationship_kwargs={"foreign_keys": "[Manuscript.author_id]"}
     )
 
-    evaluated_manuscripts: Manuscript = Relationship(
+    evaluated_manuscripts: Mapped[List["Manuscript"]] = Relationship(
         link_model=ManuscriptEvaluatorLink,
         sa_relationship_kwargs={
             "primaryjoin": "User.id==ManuscriptEvaluatorLink.evaluator_id",
@@ -49,12 +58,15 @@ class User(SQLModel, table=True):
         }
     )
 
-    evaluator_assignments: ManuscriptEvaluatorLink = Relationship(
+    evaluator_assignments: Mapped[List["ManuscriptEvaluatorLink"]] = Relationship(
         back_populates="assigned_by",
         sa_relationship_kwargs={"foreign_keys": "[ManuscriptEvaluatorLink.assigned_by_id]"}
     )
 
-    user_roles: UserRole = Relationship(
+    user_roles: Mapped[List["UserRole"]] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"foreign_keys": "[UserRole.user_id]"}
     )
+
+    country: Mapped[Optional["Country"]] = Relationship()
+    city: Mapped[Optional["City"]] = Relationship()

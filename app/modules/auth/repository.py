@@ -41,7 +41,6 @@ class AuthRepository:
         hashed_password: str,
         country_id: Optional[int] = None,
         city_id: Optional[int] = None,
-        timezone: Optional[str] = None,
         profile_photo: Optional[str] = None,
         orcid_id: Optional[str] = None,
     ) -> User:
@@ -52,7 +51,6 @@ class AuthRepository:
             password_hash=hashed_password,
             country_id=country_id,
             city_id=city_id,
-            timezone=timezone,
             profile_photo=profile_photo,
             orcid_id=orcid_id
         )

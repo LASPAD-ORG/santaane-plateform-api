@@ -56,7 +56,6 @@ class AuthService:
             hashed_password=hashed_password,
             country_id=user_data.countryId,
             city_id=user_data.cityId,
-            timezone=user_data.timezone,
             profile_photo=user_data.profilePhoto,
             orcid_id=user_data.orcidId
         )
@@ -120,7 +119,6 @@ class AuthService:
             fullName=user.full_name,
             countryName=country_name,
             cityName=city_name,
-            timezone=user.timezone,
             profilePhoto=user.profile_photo,
             orcidId=user.orcid_id,
             roles=roles,

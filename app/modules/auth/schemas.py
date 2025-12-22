@@ -14,7 +14,6 @@ class UserCreate(BaseModel):
     fullName: str 
     countryId: Optional[int] = Field(None, gt=0)
     cityId: Optional[int] = Field(None, gt=0)
-    timezone: Optional[str] = None
     profilePhoto: Optional[str] = None
     orcidId: Optional[str] = None
 
@@ -32,7 +31,6 @@ class UserResponse(BaseModel):
     fullName: str
     countryName: Optional[str] = None
     cityName: Optional[str] = None
-    timezone: Optional[str] = None
     profilePhoto: Optional[str] = None
     orcidId: Optional[str] = None
     roles: list[str] = []

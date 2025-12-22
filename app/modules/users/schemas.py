@@ -16,7 +16,6 @@ class UserBase(BaseSchema):
     full_name: str = Field(..., min_length=1, max_length=150, description="User full name", alias="fullName")
     country_id: Optional[int] = Field(None, description="Country ID", alias="countryId")
     city_id: Optional[int] = Field(None, description="City ID", alias="cityId")
-    timezone: Optional[str] = Field(None, max_length=50, description="User timezone")
     orcid_id: Optional[str] = Field(None, max_length=50, description="ORCID identifier", alias="orcidId")
 
 
@@ -43,7 +42,6 @@ class UserUpdate(BaseSchema):
     full_name: Optional[str] = Field(None, min_length=1, max_length=150, alias="fullName")
     country_id: Optional[int] = Field(None, alias="countryId")
     city_id: Optional[int] = Field(None, alias="cityId")
-    timezone: Optional[str] = Field(None, max_length=50)
     profile_photo: Optional[str] = Field(None, max_length=255, alias="profilePhoto")
     orcid_id: Optional[str] = Field(None, max_length=50, alias="orcidId")
 

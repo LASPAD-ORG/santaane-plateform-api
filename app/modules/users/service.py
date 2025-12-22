@@ -87,10 +87,11 @@ class UserService:
             )
 
         # Convert user_roles to roles list
-        roles = [
-            RoleInfo.model_validate(ur.role)
-            for ur in user.user_roles
-        ]
+        roles = []
+        if hasattr(user, 'user_roles') and user.user_roles:
+            for ur in user.user_roles:
+                if hasattr(ur, 'role') and ur.role:
+                    roles.append(RoleInfo.model_validate(ur.role))
 
         # Create response with roles
         user_dict = UserResponse.model_validate(user).model_dump()
@@ -122,10 +123,13 @@ class UserService:
         # Convert users with roles
         items = []
         for user in users:
-            roles = [
-                RoleInfo.model_validate(ur.role)
-                for ur in user.user_roles
-            ]
+            # Safely extract roles
+            roles = []
+            if hasattr(user, 'user_roles') and user.user_roles:
+                for ur in user.user_roles:
+                    if hasattr(ur, 'role') and ur.role:
+                        roles.append(RoleInfo.model_validate(ur.role))
+            
             user_dict = UserResponse.model_validate(user).model_dump()
             user_dict['roles'] = roles
             items.append(UserWithRolesResponse(**user_dict))
