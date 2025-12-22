@@ -60,17 +60,17 @@ class Manuscript(SQLModel, table=True):
         back_populates="manuscripts",
         sa_relationship_kwargs={"foreign_keys": "[Manuscript.author_id]"}
     )
-    theme: Optional[Theme] = Relationship(back_populates="manuscripts")
+    theme: Theme = Relationship(back_populates="manuscripts")
     section: Section = Relationship(back_populates="manuscripts")
     language: Language = Relationship(back_populates="manuscripts")
 
-    evaluator_links: List[ManuscriptEvaluatorLink] = Relationship(
+    evaluator_links: ManuscriptEvaluatorLink = Relationship(
         back_populates="manuscript",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
     # Accès direct aux évaluateurs
-    evaluators: List[User] = Relationship(
+    evaluators: User = Relationship(
         link_model=ManuscriptEvaluatorLink,
         sa_relationship_kwargs={
             "primaryjoin": "Manuscript.id==ManuscriptEvaluatorLink.manuscript_id",

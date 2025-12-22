@@ -20,4 +20,4 @@ class Theme(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
-    manuscripts: List[Manuscript] = Relationship(back_populates="theme")
+    manuscripts: Manuscript = Relationship(back_populates="theme")

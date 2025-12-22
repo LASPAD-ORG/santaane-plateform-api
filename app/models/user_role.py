@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
 from datetime import datetime
@@ -20,11 +22,11 @@ class UserRole(SQLModel, table=True):
     )
 
     # Relationships
-    user: "User" = Relationship(
+    user: User = Relationship(
         back_populates="user_roles",
         sa_relationship_kwargs={"foreign_keys": "[UserRole.user_id]"}
     )
-    role: "Role" = Relationship(back_populates="user_roles")
-    assigner: Optional["User"] = Relationship(
+    role: Role = Relationship(back_populates="user_roles")
+    assigner: User = Relationship(
         sa_relationship_kwargs={"foreign_keys": "[UserRole.assigned_by]"}
     )

@@ -22,4 +22,4 @@ class Language(SQLModel, table=True):
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False))
     updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False))
 
-    manuscripts: List[Manuscript] = Relationship(back_populates="language")
+    manuscripts: Manuscript = Relationship(back_populates="language")

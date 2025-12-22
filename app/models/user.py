@@ -13,6 +13,7 @@ from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 
 if TYPE_CHECKING:
     from app.models.manuscript import Manuscript
+    from app.models.user_role import UserRole
 
 
 class User(SQLModel, table=True):
@@ -34,12 +35,12 @@ class User(SQLModel, table=True):
     updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False))
 
     # Relations
-    manuscripts: List[Manuscript] = Relationship(
+    manuscripts: Manuscript = Relationship(
         back_populates="author",
         sa_relationship_kwargs={"foreign_keys": "[Manuscript.author_id]"}
     )
 
-    evaluated_manuscripts: List[Manuscript] = Relationship(
+    evaluated_manuscripts: Manuscript = Relationship(
         link_model=ManuscriptEvaluatorLink,
         sa_relationship_kwargs={
             "primaryjoin": "User.id==ManuscriptEvaluatorLink.evaluator_id",
@@ -48,7 +49,12 @@ class User(SQLModel, table=True):
         }
     )
 
-    evaluator_assignments: List[ManuscriptEvaluatorLink] = Relationship(
+    evaluator_assignments: ManuscriptEvaluatorLink = Relationship(
         back_populates="assigned_by",
         sa_relationship_kwargs={"foreign_keys": "[ManuscriptEvaluatorLink.assigned_by_id]"}
+    )
+
+    user_roles: UserRole = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"foreign_keys": "[UserRole.user_id]"}
     )

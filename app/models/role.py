@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
 from datetime import datetime
@@ -22,4 +24,4 @@ class Role(SQLModel, table=True):
     )
 
     # Relationships
-    user_roles: list["UserRole"] = Relationship(back_populates="role")
+    user_roles: UserRole = Relationship(back_populates="role")
