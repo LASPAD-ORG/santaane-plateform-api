@@ -207,6 +207,65 @@ async def download_file(
 
 
 @router.get(
+    "/view/{file_path:path}",
+    response_class=FileResponse,
+    summary="View a file (public)"
+)
+async def view_file(file_path: str):
+    """
+    View a file from the server without authentication.
+    Useful for viewing PDFs in the browser.
+
+    **No authentication required**
+
+    **Parameters:**
+    - **file_path**: Relative path to the file (e.g., "manuscripts/abc123.pdf")
+
+    **Returns:**
+    - File content for inline viewing
+    """
+    try:
+        # Get file from storage
+        absolute_path, exists = await file_storage.get_file(file_path)
+
+        if not exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found"
+            )
+
+        # Get file extension
+        file_extension = Path(file_path).suffix.lstrip('.').lower()
+        
+        # Set appropriate media type
+        media_types = {
+            'pdf': 'application/pdf',
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+        }
+        media_type = media_types.get(file_extension, 'application/octet-stream')
+
+        logger.info(f"File viewed: {file_path}")
+
+        # Return file for inline viewing
+        return FileResponse(
+            path=absolute_path,
+            media_type=media_type,
+            headers={"Content-Disposition": "inline"}
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"View file failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"File view failed: {str(e)}"
+        )
+
+
+@router.get(
     "/info/{file_path:path}",
     response_model=FileDownloadResponse,
     summary="Get file information"

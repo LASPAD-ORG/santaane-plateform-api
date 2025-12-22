@@ -134,3 +134,45 @@ class ManuscriptService:
             manuscripts=manuscript_responses,
             total=total
         )
+
+    async def get_manuscript_details(
+        self,
+        manuscript_id: int,
+        current_user_id: int
+    ) -> ManuscriptResponse:
+        """Get manuscript details by ID (only if user is the author)"""
+        logger.info(f"Fetching manuscript {manuscript_id} for user {current_user_id}")
+
+        manuscript = await self.repository.get_manuscript_by_id(manuscript_id)
+        
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        # Verify that the current user is the author
+        if manuscript.author_id != current_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own manuscripts"
+            )
+
+        # Fetch related data
+        theme = await self.repository.get_theme_by_id(manuscript.theme_id) if manuscript.theme_id else None
+        section = await self.repository.get_section_by_id(manuscript.section_id)
+        language = await self.repository.get_language_by_id(manuscript.language_id)
+
+        return ManuscriptResponse(
+            id=manuscript.id,
+            title=manuscript.title,
+            abstract=manuscript.abstract,
+            keywords=manuscript.keywords,
+            themeName=theme.title if theme else None,
+            sectionName=section.name if section else "",
+            languageName=language.name if language else "",
+            status=manuscript.status,
+            pdfFilename=manuscript.pdf_filename,
+            createdAt=manuscript.created_at,
+            updatedAt=manuscript.updated_at
+        )

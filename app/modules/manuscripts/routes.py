@@ -69,3 +69,28 @@ async def get_my_manuscripts(
         skip=skip,
         limit=limit
     )
+
+
+@router.get(
+    "/{manuscript_id}",
+    response_model=ManuscriptResponse,
+    dependencies=[Depends(require_role(UserRole.AUTHOR))]
+)
+async def get_manuscript_details(
+    manuscript_id: int,
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    Get details of a specific manuscript
+    
+    Requires AUTHOR role
+    
+    Users can only view their own manuscripts
+    
+    - **manuscript_id**: ID of the manuscript to retrieve
+    """
+    return await service.get_manuscript_details(
+        manuscript_id=manuscript_id,
+        current_user_id=current_user.id
+    )
