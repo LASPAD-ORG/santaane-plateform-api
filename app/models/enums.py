@@ -9,15 +9,13 @@ from enum import Enum
 
 class ManuscriptStatus(str, Enum):
     """Manuscript lifecycle status"""
-    DRAFT = "draft"
     SUBMITTED = "submitted"
     UNDER_REVIEW = "under_review"
-    REVISION_REQUESTED = "revision_requested"
     REVISED = "revised"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
+    REVISION_REQUESTED = "revision_requested"
     PUBLISHED = "published"
-    WITHDRAWN = "withdrawn"
 
 
 class ManuscriptFileType(str, Enum):

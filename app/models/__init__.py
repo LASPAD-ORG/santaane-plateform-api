@@ -24,6 +24,9 @@ from app.models.manuscript_editor import ManuscriptEditor
 
 # Core manuscript system
 from app.models.category import Category
+from app.models.theme import Theme
+from app.models.section import Section
+from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 from app.models.manuscript import Manuscript
 from app.models.manuscript_file import ManuscriptFile
 from app.models.manuscript_version import ManuscriptVersion
@@ -65,6 +68,9 @@ __all__ = [
     "ManuscriptEditor",
     # Core manuscript system
     "Category",
+    "Theme",
+    "Section",
+    "ManuscriptEvaluatorLink",
     "Manuscript",
     "ManuscriptFile",
     "ManuscriptVersion",

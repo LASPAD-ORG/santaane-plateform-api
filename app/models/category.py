@@ -2,11 +2,9 @@
 Category model - Manuscript categories/classifications
 """
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, TYPE_CHECKING, List
+from typing import Optional, List
 from datetime import datetime
 
-if TYPE_CHECKING:
-    from app.models.manuscript import Manuscript
 
 
 class Category(SQLModel, table=True):
@@ -21,7 +19,6 @@ class Category(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
     # Relationships
-    manuscripts: List["Manuscript"] = Relationship(back_populates="category")
     children: List["Category"] = Relationship(
         back_populates="parent",
         sa_relationship_kwargs={"remote_side": "Category.id"}

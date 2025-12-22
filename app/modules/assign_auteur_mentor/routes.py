@@ -51,7 +51,6 @@ async def create_mentor_assignment(
     """
     return await service.create_assignment(assignment_data, current_user)
 
-
 @router.put(
     "/assign/{assignment_id}",
     response_model=MentorAssignmentResponse,
