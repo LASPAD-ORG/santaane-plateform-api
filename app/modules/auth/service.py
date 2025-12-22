@@ -93,6 +93,9 @@ class AuthService:
             fullName=user.full_name,
             profilePhoto=user.profile_photo,
             orcidId=user.orcid_id,
+            bio=user.bio,
+            position=user.position,
+            institution=user.institution,
             roles=roles,
             createdAt=user.created_at,
             updatedAt=user.updated_at

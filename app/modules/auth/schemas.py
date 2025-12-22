@@ -29,6 +29,9 @@ class UserResponse(BaseModel):
     fullName: str
     profilePhoto: Optional[str] = None
     orcidId: Optional[str] = None
+    bio: Optional[str] = None
+    position: Optional[str] = None
+    institution: Optional[str] = None
     roles: list[str] = []
     createdAt: datetime
     updatedAt: datetime

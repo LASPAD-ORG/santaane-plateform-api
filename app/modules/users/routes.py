@@ -72,6 +72,27 @@ async def update_my_profile(
     return await service.update_own_profile(current_user.id, data)
 
 
+@router.put(
+    "/me/password",
+    summary="Change own password"
+)
+async def change_my_password(
+    data: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service)
+):
+    """
+    Change authenticated user's own password.
+
+    **Requires:** Authentication
+
+    **Parameters:**
+    - **currentPassword**: Current password
+    - **newPassword**: New password (min 8 chars, must contain uppercase, lowercase, and digit)
+    """
+    return await service.change_password(current_user.id, data, current_user)
+
+
 @router.delete(
     "/{user_id}/hard",
     summary="Hard delete a user (permanent)",

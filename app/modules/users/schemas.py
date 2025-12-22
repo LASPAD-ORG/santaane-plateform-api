@@ -21,18 +21,6 @@ class UserCreate(UserBase):
     """Schema for creating a new user."""
     password: str = Field(..., min_length=8, max_length=100, description="User password")
 
-    @field_validator('password')
-    @classmethod
-    def validate_password(cls, v: str) -> str:
-        """Validate password strength."""
-        if not any(c.isupper() for c in v):
-            raise ValueError('Password must contain at least one uppercase letter')
-        if not any(c.islower() for c in v):
-            raise ValueError('Password must contain at least one lowercase letter')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain at least one digit')
-        return v
-
 
 class UserUpdate(BaseSchema):
     """Schema for updating an existing user."""
@@ -57,18 +45,6 @@ class PasswordChange(BaseSchema):
     current_password: str = Field(..., description="Current password", alias="currentPassword")
     new_password: str = Field(..., min_length=8, max_length=100, description="New password", alias="newPassword")
 
-    @field_validator('new_password')
-    @classmethod
-    def validate_password(cls, v: str) -> str:
-        """Validate password strength."""
-        if not any(c.isupper() for c in v):
-            raise ValueError('Password must contain at least one uppercase letter')
-        if not any(c.islower() for c in v):
-            raise ValueError('Password must contain at least one lowercase letter')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain at least one digit')
-        return v
-
 
 class UserActivation(BaseSchema):
     """Schema for activating/deactivating user."""
@@ -92,6 +68,9 @@ class UserResponse(UserBase, TimestampSchema):
     email_verified: bool = Field(..., alias="emailVerified")
     is_active: bool = Field(..., alias="isActive")
     profile_photo: Optional[str] = Field(None, alias="profilePhoto")
+    bio: Optional[str] = Field(default=None, description="User biography")
+    position: Optional[str] = Field(default=None, description="Current position")
+    institution: Optional[str] = Field(default=None, description="Institution name")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
