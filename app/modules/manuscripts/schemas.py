@@ -120,3 +120,24 @@ class ManuscriptListResponse(BaseModel):
     """Schema for manuscript list response"""
     manuscripts: list[ManuscriptResponse]
     total: int
+
+
+class EvaluatorManuscriptResponse(BaseModel):
+    """Schema for manuscript response for evaluators (without author details)"""
+    id: int
+    title: str
+    abstract: Optional[str] = None
+    keywords: Optional[str] = None
+    themeName: Optional[str] = None
+    sectionName: str
+    languageName: str
+    status: ManuscriptStatus
+    pdfFilename: str
+    assignmentStatus: EvaluatorAssignmentStatus
+    assignedAt: datetime
+    evaluationDeadline: Optional[datetime] = None
+    responseAt: Optional[datetime] = None
+    createdAt: datetime
+    updatedAt: datetime
+    
+    model_config = ConfigDict(from_attributes=True)

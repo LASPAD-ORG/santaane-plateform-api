@@ -3,6 +3,7 @@ Manuscripts module - Business logic service
 Handles manuscript business logic
 """
 from fastapi import HTTPException, status
+from typing import List
 from app.modules.manuscripts.repository import ManuscriptRepository
 from app.modules.manuscripts.schemas import (
     ManuscriptSubmit, 
@@ -13,7 +14,8 @@ from app.modules.manuscripts.schemas import (
     AuthorInfo,
     ManuscriptUpdate,
     ManuscriptStatusUpdate,
-    EvaluatorAssignment
+    EvaluatorAssignment,
+    EvaluatorManuscriptResponse
 )
 from app.modules.manuscripts.error_codes import ManuscriptErrorCode
 from app.models.manuscript import Manuscript
@@ -511,3 +513,36 @@ class ManuscriptService:
 
         # Return detailed response
         return await self.get_manuscript_detail_for_staff(manuscript_id)
+
+    async def get_my_assignments(self, evaluator_id: int) -> List[EvaluatorManuscriptResponse]:
+        """Get all manuscripts assigned to an evaluator (without author details)"""
+        logger.info(f"Fetching manuscript assignments for evaluator {evaluator_id}")
+        
+        assignments = await self.repository.get_manuscripts_for_evaluator(evaluator_id)
+        
+        manuscripts = []
+        for assignment in assignments:
+            manuscript = assignment.manuscript
+            
+            manuscripts.append(
+                EvaluatorManuscriptResponse(
+                    id=manuscript.id,
+                    title=manuscript.title,
+                    abstract=manuscript.abstract,
+                    keywords=manuscript.keywords,
+                    themeName=manuscript.theme.name if manuscript.theme else None,
+                    sectionName=manuscript.section.name,
+                    languageName=manuscript.language.name,
+                    status=manuscript.status,
+                    pdfFilename=manuscript.pdf_filename,
+                    assignmentStatus=assignment.status,
+                    assignedAt=assignment.assigned_at,
+                    evaluationDeadline=assignment.evaluation_deadline,
+                    responseAt=assignment.response_at,
+                    createdAt=manuscript.created_at,
+                    updatedAt=manuscript.updated_at
+                )
+            )
+        
+        logger.info(f"Found {len(manuscripts)} manuscript assignments for evaluator {evaluator_id}")
+        return manuscripts

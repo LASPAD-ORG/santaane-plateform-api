@@ -3,6 +3,7 @@ Manuscripts module - API routes
 Handles HTTP endpoints for manuscript operations
 """
 from fastapi import APIRouter, Depends, status
+from typing import List
 from app.modules.manuscripts.schemas import (
     ManuscriptSubmit, 
     ManuscriptResponse,
@@ -10,7 +11,8 @@ from app.modules.manuscripts.schemas import (
     ManuscriptRevision,
     ManuscriptDetailResponse,
     ManuscriptUpdate,
-    ManuscriptStatusUpdate
+    ManuscriptStatusUpdate,
+    EvaluatorManuscriptResponse
 )
 from app.modules.manuscripts.service import ManuscriptService
 from app.modules.manuscripts.utils import get_manuscript_service
@@ -258,3 +260,27 @@ async def revise_manuscript(
         revision_data=revision_data,
         current_user_id=current_user.id
     )
+
+
+@router.get(
+    "/my-assignments",
+    response_model=List[EvaluatorManuscriptResponse],
+    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    summary="Get my manuscript assignments (Evaluator)"
+)
+async def get_my_assignments(
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    Get all manuscripts assigned to the current evaluator.
+    
+    **Requires:** EVALUATOR role
+    
+    **Returns:**
+    - List of manuscripts with assignment details
+    - Does NOT include author information for privacy
+    - Includes assignment status (PENDING, ACCEPTED, DECLINED)
+    - Includes evaluation deadline if set
+    """
+    return await service.get_my_assignments(current_user.id)

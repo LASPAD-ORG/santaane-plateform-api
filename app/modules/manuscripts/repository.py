@@ -147,3 +147,24 @@ class ManuscriptRepository:
         await self.session.commit()
         await self.session.refresh(manuscript)
         return manuscript
+
+    async def get_manuscripts_for_evaluator(self, evaluator_id: int) -> List[ManuscriptEvaluatorLink]:
+        """Get all manuscripts assigned to a specific evaluator"""
+        query = (
+            select(ManuscriptEvaluatorLink)
+            .where(ManuscriptEvaluatorLink.evaluator_id == evaluator_id)
+            .options(
+                selectinload(ManuscriptEvaluatorLink.manuscript)
+                .selectinload(Manuscript.theme)
+            )
+            .options(
+                selectinload(ManuscriptEvaluatorLink.manuscript)
+                .selectinload(Manuscript.section)
+            )
+            .options(
+                selectinload(ManuscriptEvaluatorLink.manuscript)
+                .selectinload(Manuscript.language)
+            )
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
