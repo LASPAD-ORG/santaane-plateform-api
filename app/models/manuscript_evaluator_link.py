@@ -3,13 +3,20 @@ ManuscriptEvaluatorLink model - Table pivot Manuscript <-> Evaluator
 """
 from __future__ import annotations
 
-from sqlmodel import SQLModel, Field, Relationship
-from datetime import datetime
-from typing import TYPE_CHECKING
+from sqlmodel import SQLModel, Field, Relationship, Column
+from sqlalchemy import Enum as SQLAlchemyEnum
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Optional
+from app.models.enums import EvaluatorAssignmentStatus
 
 if TYPE_CHECKING:
     from app.models.manuscript import Manuscript
     from app.models.user import User
+
+
+def get_utc_now():
+    """Return current UTC time with timezone info"""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class ManuscriptEvaluatorLink(SQLModel, table=True):
@@ -32,8 +39,31 @@ class ManuscriptEvaluatorLink(SQLModel, table=True):
     )
 
     assigned_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=get_utc_now,
         nullable=False
+    )
+
+    status: EvaluatorAssignmentStatus = Field(
+        sa_column=Column(
+            SQLAlchemyEnum(
+                EvaluatorAssignmentStatus,
+                name="evaluatorassignmentstatus",
+                create_constraint=True,
+                native_enum=False
+            ),
+            nullable=False,
+            default=EvaluatorAssignmentStatus.PENDING.value
+        )
+    )
+
+    response_at: Optional[datetime] = Field(
+        default=None,
+        nullable=True
+    )
+
+    evaluation_deadline: Optional[datetime] = Field(
+        default=None,
+        nullable=True
     )
 
     # Relations

@@ -160,6 +160,7 @@ show_help() {
     echo -e "  ${ORANGE}║${NC}"
     echo -e "  ${ORANGE}║${NC}  ${YELLOW}db${NC}, ${YELLOW}psql${NC}             ${GRAY}→${NC} Connexion PostgreSQL"
     echo -e "  ${ORANGE}║${NC}  ${YELLOW}db-reset${NC}             ${GRAY}→${NC} Réinitialiser la DB"
+    echo -e "  ${ORANGE}║${NC}  ${YELLOW}db-seed${NC}              ${GRAY}→${NC} Peupler avec données initiales"
     echo -e "  ${ORANGE}║${NC}  ${YELLOW}db-dump${NC}              ${GRAY}→${NC} Créer un dump de la DB"
     echo -e "  ${ORANGE}║${NC}  ${YELLOW}db-restore${NC}           ${GRAY}→${NC} Restaurer un dump de la DB"
     echo -e "  ${ORANGE}║${NC}  ${YELLOW}seed-countries${NC}       ${GRAY}→${NC} Peupler les pays depuis JSON"
@@ -468,6 +469,130 @@ reset_db() {
         print_success "Base de données réinitialisée"
     else
         print_info "Réinitialisation annulée"
+    fi
+}
+
+# Seed database with initial data (super admin + roles)
+seed_db() {
+    print_header "Peuplement de la base de données"
+    check_docker
+
+    if ! check_running; then
+        print_error "Les services ne sont pas démarrés"
+        print_info "Utilisez './santaane start' d'abord"
+        exit 1
+    fi
+
+    print_info "Création des données initiales..."
+    
+    # Execute Python script to seed database
+    $DOCKER_COMPOSE exec -T api python3 << 'PYTHON_SCRIPT'
+import asyncio
+import bcrypt
+from sqlalchemy import text
+from app.db import AsyncSessionLocal
+
+
+async def seed():
+    print("🌱 Début du seed de la base de données...")
+    
+    async with AsyncSessionLocal() as session:
+        try:
+            # 1. Créer les rôles
+            print("📋 Création des rôles...")
+            roles_data = [
+                {"id": 1, "name": "SUPER_ADMIN", "description": "Super administrateur avec tous les droits"},
+                {"id": 2, "name": "ADMIN", "description": "Administrateur du système"},
+                {"id": 3, "name": "EDITOR", "description": "Éditeur de la plateforme"},
+                {"id": 4, "name": "REVIEWER", "description": "Évaluateur de manuscrits"},
+                {"id": 5, "name": "AUTHOR", "description": "Auteur de manuscrits"},
+            ]
+            
+            for role_data in roles_data:
+                # Check if role already exists
+                result = await session.execute(
+                    text(f"SELECT id FROM roles WHERE id = {role_data['id']}")
+                )
+                if not result.scalar_one_or_none():
+                    await session.execute(
+                        text(f"""INSERT INTO roles (id, name, description, created_at, updated_at) 
+                        VALUES ({role_data['id']}, '{role_data['name']}', '{role_data['description']}', NOW(), NOW())""")
+                    )
+                    print(f"  ✅ Rôle créé: {role_data['name']}")
+                else:
+                    print(f"  ⏭️  Rôle existe déjà: {role_data['name']}")
+            
+            # 2. Créer le super admin
+            print("\n👤 Création du super administrateur...")
+            
+            # Check if super admin already exists
+            result = await session.execute(
+                text("SELECT id FROM users WHERE email = 'santaane@gmail.com'")
+            )
+            existing_user = result.scalar_one_or_none()
+            
+            if not existing_user:
+                # Hash the password using bcrypt
+                password = "Santaane"
+                salt = bcrypt.gensalt()
+                password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+                
+                # Create super admin user
+                await session.execute(
+                    text(f"""INSERT INTO users (
+                        email, email_verified, password_hash, full_name, 
+                        profile_photo, orcid_id, is_active, bio, position, institution,
+                        created_at, updated_at
+                    ) VALUES (
+                        'santaane@gmail.com', true, '{password_hash}', 'Super Admin Santaane',
+                        NULL, NULL, true, 'Administrateur principal de la plateforme Santaane', 
+                        'Super Administrateur', 'Santaane Platform',
+                        NOW(), NOW()
+                    ) RETURNING id""")
+                )
+                result = await session.execute(text("SELECT id FROM users WHERE email = 'santaane@gmail.com'"))
+                user_id = result.scalar_one()
+                
+                # Assign SUPER_ADMIN role
+                await session.execute(
+                    text(f"""INSERT INTO user_roles (user_id, role_id, assigned_at, assigned_by)
+                    VALUES ({user_id}, 1, NOW(), {user_id})""")
+                )
+                
+                print("  ✅ Super admin créé:")
+                print(f"     📧 Email: santaane@gmail.com")
+                print(f"     🔑 Mot de passe: Santaane")
+                print(f"     👑 Rôle: SUPER_ADMIN")
+            else:
+                print("  ⏭️  Super admin existe déjà: santaane@gmail.com")
+            
+            await session.commit()
+            
+            print("\n✨ Seed terminé avec succès!")
+            print("\n📝 Credentials par défaut:")
+            print("   Email: santaane@gmail.com")
+            print("   Password: Santaane")
+            
+        except Exception as e:
+            await session.rollback()
+            print(f"\n❌ Erreur lors du seed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
+
+
+asyncio.run(seed())
+PYTHON_SCRIPT
+
+    if [ $? -eq 0 ]; then
+        print_success "Base de données peuplée avec succès!"
+        echo ""
+        print_info "Credentials:"
+        echo -e "  ${CYAN}Email:${NC}    ${YELLOW}santaane@gmail.com${NC}"
+        echo -e "  ${CYAN}Password:${NC} ${YELLOW}Santaane${NC}"
+    else
+        print_error "Échec du peuplement de la base de données"
+        exit 1
     fi
 }
 
@@ -1196,6 +1321,9 @@ case "${1:-help}" in
         ;;
     db-reset)
         reset_db
+        ;;
+    db-seed)
+        seed_db
         ;;
     db-dump)
         dump_db

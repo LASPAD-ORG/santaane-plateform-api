@@ -19,6 +19,13 @@ class ManuscriptStatus(str, Enum):
     PUBLISHED = "published"
 
 
+class EvaluatorAssignmentStatus(str, Enum):
+    """Status of evaluator assignment to manuscript"""
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+
+
 class ManuscriptFileType(str, Enum):
     """Types of files attached to manuscripts"""
     PDF = "pdf"

@@ -14,9 +14,12 @@ from app.modules.users.schemas import (
     UserResponse,
     UserWithRolesResponse,
     PasswordChange,
-    UserActivation
+    AdminPasswordReset,
+    UserActivation,
+    EvaluatorCreate
 )
 from app.core.permissions import require_super_admin, get_current_user, require_any_role
+from app.core.roles import UserRole
 from app.models.user import User
 
 from app.schemas.base import PaginatedResponse
@@ -91,6 +94,102 @@ async def change_my_password(
     - **newPassword**: New password (min 8 chars, must contain uppercase, lowercase, and digit)
     """
     return await service.change_password(current_user.id, data, current_user)
+
+
+@router.put(
+    "/{user_id}/reset-password",
+    dependencies=[Depends(require_super_admin)],
+    summary="Reset user password (Admin)"
+)
+async def reset_user_password(
+    user_id: int,
+    data: AdminPasswordReset,
+    current_user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service)
+):
+    """
+    Reset a user's password (Super Admin only).
+
+    **Requires:** SUPER_ADMIN role
+
+    **Parameters:**
+    - **user_id**: ID of the user whose password should be reset
+    - **newPassword**: New password (min 8 chars)
+
+    **Note:** Admin does not need to know the current password.
+    """
+    return await service.reset_user_password(user_id, data, current_user)
+
+
+@router.post(
+    "/evaluators",
+    response_model=UserWithRolesResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_any_role(UserRole.EDITOR, UserRole.SUPER_ADMIN))],
+    summary="Create evaluator account"
+)
+async def create_evaluator(
+    data: EvaluatorCreate,
+    current_user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service)
+):
+    """
+    Create a new evaluator account.
+
+    **Requires:** EDITOR or SUPER_ADMIN role
+
+    **Parameters:**
+    - **email**: Evaluator email address (must be unique)
+    - **fullName**: Evaluator full name
+    - **orcidId**: Optional ORCID identifier
+    - **bio**: Optional biography
+    - **position**: Optional current position
+    - **institution**: Optional institution name
+
+    **Returns:** Created evaluator with EVALUATOR role assigned
+    
+    **Note:** A random password is generated and sent to the evaluator via email
+    """
+    return await service.create_evaluator(data, current_user)
+
+
+@router.get(
+    "/evaluators",
+    response_model=PaginatedResponse[UserWithRolesResponse],
+    dependencies=[Depends(require_any_role(UserRole.EDITOR, UserRole.SUPER_ADMIN))],
+    summary="List all evaluators"
+)
+async def list_evaluators(
+    page: int = Query(1, ge=1, description="Page number"),
+    size: int = Query(20, ge=1, le=100, description="Items per page"),
+    service: UserService = Depends(get_user_service)
+):
+    """
+    Get a paginated list of all evaluators with their information.
+
+    **Requires:** EDITOR or SUPER_ADMIN role
+
+    **Query Parameters:**
+    - **page**: Page number (default: 1)
+    - **size**: Items per page (default: 20, max: 100)
+
+    **Returns:** Paginated list of evaluators with:
+    - id
+    - email
+    - fullName
+    - orcidId
+    - bio
+    - position
+    - institution
+    - emailVerified
+    - isActive
+    - profilePhoto
+    - roles (list of assigned roles)
+    - createdAt
+    - updatedAt
+    """
+    skip = (page - 1) * size
+    return await service.list_evaluators(skip=skip, limit=size)
 
 
 @router.delete(

@@ -7,7 +7,10 @@ from app.modules.manuscripts.schemas import (
     ManuscriptSubmit, 
     ManuscriptResponse,
     ManuscriptListResponse,
-    ManuscriptRevision
+    ManuscriptRevision,
+    ManuscriptDetailResponse,
+    ManuscriptUpdate,
+    ManuscriptStatusUpdate
 )
 from app.modules.manuscripts.service import ManuscriptService
 from app.modules.manuscripts.utils import get_manuscript_service
@@ -69,6 +72,132 @@ async def get_my_manuscripts(
         author_id=current_user.id,
         skip=skip,
         limit=limit
+    )
+
+
+@router.get(
+    "/all",
+    response_model=ManuscriptListResponse,
+    dependencies=[Depends(require_role(UserRole.EDITOR))]
+)
+async def get_all_manuscripts(
+    theme_id: int | None = None,
+    section_id: int | None = None,
+    language_id: int | None = None,
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    Get all manuscripts with optional filters
+    
+    Requires EDITOR role
+    
+    - **theme_id**: Optional filter by theme ID (can be null for manuscripts without theme)
+    - **section_id**: Optional filter by section ID
+    - **language_id**: Optional filter by language ID
+    - **skip**: Number of records to skip (pagination)
+    - **limit**: Maximum number of records to return
+    """
+    return await service.get_all_manuscripts(
+        theme_id=theme_id,
+        section_id=section_id,
+        language_id=language_id,
+        skip=skip,
+        limit=limit
+    )
+
+
+@router.get(
+    "/detail/{manuscript_id}",
+    response_model=ManuscriptDetailResponse,
+    dependencies=[Depends(require_role(UserRole.EDITOR))]
+)
+async def get_manuscript_detail_for_staff(
+    manuscript_id: int,
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    Get detailed manuscript information including author details
+    
+    Requires EDITOR role (also accessible by ADMIN and EVALUATOR)
+    
+    Returns complete manuscript information with author details:
+    - Author email, full name, ORCID ID
+    - Author bio, position, institution
+    - Manuscript content and metadata
+    
+    - **manuscript_id**: ID of the manuscript to retrieve
+    """
+    return await service.get_manuscript_detail_for_staff(
+        manuscript_id=manuscript_id
+    )
+
+
+@router.put(
+    "/detail/{manuscript_id}",
+    response_model=ManuscriptDetailResponse,
+    dependencies=[Depends(require_role(UserRole.EDITOR))]
+)
+async def update_manuscript_by_staff(
+    manuscript_id: int,
+    update_data: ManuscriptUpdate,
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    Update manuscript (all fields except status)
+    
+    Requires EDITOR role (also accessible by SUPER_ADMIN)
+    
+    Can update:
+    - title, abstract, keywords
+    - theme, section, language
+    - PDF filename
+    
+    Cannot update status (use separate status endpoint)
+    
+    - **manuscript_id**: ID of the manuscript to update
+    """
+    return await service.update_manuscript_by_staff(
+        manuscript_id=manuscript_id,
+        update_data=update_data
+    )
+
+
+@router.put(
+    "/detail/{manuscript_id}/status",
+    response_model=ManuscriptDetailResponse,
+    dependencies=[Depends(require_role(UserRole.EDITOR))]
+)
+async def update_manuscript_status(
+    manuscript_id: int,
+    status_data: ManuscriptStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    Update manuscript status only
+    
+    Requires EDITOR role (also accessible by SUPER_ADMIN)
+    
+    Allowed status values:
+    - REVISION_REQUESTED: Request revisions from author
+    - ACCEPTED: Accept the manuscript
+    - REJECTED: Reject the manuscript
+    - PUBLISHED: Mark as published
+    
+    When status is ACCEPTED or REJECTED, decision_at is automatically set.
+    When status is PUBLISHED, published_at is automatically set.
+    
+    - **manuscript_id**: ID of the manuscript
+    - **status**: New status value
+    """
+    return await service.update_manuscript_status(
+        manuscript_id=manuscript_id,
+        status_data=status_data
     )
 
 

@@ -8,7 +8,12 @@ from app.modules.manuscripts.schemas import (
     ManuscriptSubmit, 
     ManuscriptResponse,
     ManuscriptListResponse,
-    ManuscriptRevision
+    ManuscriptRevision,
+    ManuscriptDetailResponse,
+    AuthorInfo,
+    ManuscriptUpdate,
+    ManuscriptStatusUpdate,
+    EvaluatorAssignment
 )
 from app.modules.manuscripts.error_codes import ManuscriptErrorCode
 from app.models.manuscript import Manuscript
@@ -134,6 +139,127 @@ class ManuscriptService:
         return ManuscriptListResponse(
             manuscripts=manuscript_responses,
             total=total
+        )
+
+    async def get_all_manuscripts(
+        self,
+        theme_id: int | None = None,
+        section_id: int | None = None,
+        language_id: int | None = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> ManuscriptListResponse:
+        """Get all manuscripts with optional filters (for editors)"""
+        logger.info(f"Fetching all manuscripts with filters: theme={theme_id}, section={section_id}, language={language_id}")
+
+        manuscripts = await self.repository.get_all_manuscripts(
+            theme_id=theme_id,
+            section_id=section_id,
+            language_id=language_id,
+            skip=skip,
+            limit=limit
+        )
+        total = await self.repository.count_all_manuscripts(
+            theme_id=theme_id,
+            section_id=section_id,
+            language_id=language_id
+        )
+
+        manuscript_responses = []
+        for manuscript in manuscripts:
+            theme = await self.repository.get_theme_by_id(manuscript.theme_id) if manuscript.theme_id else None
+            section = await self.repository.get_section_by_id(manuscript.section_id)
+            language = await self.repository.get_language_by_id(manuscript.language_id)
+            
+            # Get evaluators assigned to this manuscript
+            evaluators = await self.repository.get_manuscript_evaluators(manuscript.id)
+            evaluator_assignments = []
+            for link in evaluators:
+                evaluator_assignments.append(
+                    EvaluatorAssignment(
+                        evaluatorId=link.evaluator_id,
+                        evaluatorName=link.evaluator.full_name,
+                        evaluatorEmail=link.evaluator.email,
+                        status=link.status,
+                        assignedAt=link.assigned_at,
+                        responseAt=link.response_at,
+                        evaluationDeadline=link.evaluation_deadline
+                    )
+                )
+
+            manuscript_responses.append(
+                ManuscriptResponse(
+                    id=manuscript.id,
+                    title=manuscript.title,
+                    abstract=manuscript.abstract,
+                    keywords=manuscript.keywords,
+                    themeName=theme.title if theme else None,
+                    sectionName=section.name if section else "",
+                    languageName=language.name if language else "",
+                    status=manuscript.status,
+                    pdfFilename=manuscript.pdf_filename,
+                    evaluators=evaluator_assignments,
+                    createdAt=manuscript.created_at,
+                    updatedAt=manuscript.updated_at
+                )
+            )
+
+        return ManuscriptListResponse(
+            manuscripts=manuscript_responses,
+            total=total
+        )
+
+    async def get_manuscript_detail_for_staff(
+        self,
+        manuscript_id: int
+    ) -> ManuscriptDetailResponse:
+        """Get detailed manuscript information for admin/editor/evaluator"""
+        logger.info(f"Fetching manuscript details {manuscript_id} for staff")
+
+        manuscript = await self.repository.get_manuscript_by_id(manuscript_id)
+        
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        # Fetch author information
+        author = await self.repository.get_user_by_id(manuscript.author_id)
+        if not author:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Author not found"
+            )
+
+        # Fetch related data
+        theme = await self.repository.get_theme_by_id(manuscript.theme_id) if manuscript.theme_id else None
+        section = await self.repository.get_section_by_id(manuscript.section_id)
+        language = await self.repository.get_language_by_id(manuscript.language_id)
+
+        return ManuscriptDetailResponse(
+            id=manuscript.id,
+            title=manuscript.title,
+            abstract=manuscript.abstract,
+            keywords=manuscript.keywords,
+            themeId=manuscript.theme_id,
+            themeName=theme.title if theme else None,
+            sectionId=manuscript.section_id,
+            sectionName=section.name if section else "",
+            languageId=manuscript.language_id,
+            languageName=language.name if language else "",
+            status=manuscript.status,
+            pdfFilename=manuscript.pdf_filename,
+            author=AuthorInfo(
+                email=author.email,
+                fullName=author.full_name,
+                orcidId=author.orcid_id,
+                bio=author.bio,
+                position=author.position,
+                institution=author.institution
+            ),
+            createdAt=manuscript.created_at,
+            updatedAt=manuscript.updated_at
         )
 
     async def get_manuscript_details(
@@ -278,3 +404,110 @@ class ManuscriptService:
             createdAt=updated_manuscript.created_at,
             updatedAt=updated_manuscript.updated_at
         )
+
+    async def update_manuscript_by_staff(
+        self,
+        manuscript_id: int,
+        update_data: ManuscriptUpdate
+    ) -> ManuscriptDetailResponse:
+        """Update manuscript by editor/admin (all fields except status)"""
+        logger.info(f"Staff updating manuscript {manuscript_id}")
+
+        manuscript = await self.repository.get_manuscript_by_id(manuscript_id)
+        
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        # Validate theme if provided
+        if update_data.themeId is not None:
+            theme = await self.repository.get_theme_by_id(update_data.themeId)
+            if not theme:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ManuscriptErrorCode.INVALID_THEME_ID
+                )
+
+        # Validate section if provided
+        if update_data.sectionId is not None:
+            section = await self.repository.get_section_by_id(update_data.sectionId)
+            if not section:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ManuscriptErrorCode.INVALID_SECTION_ID
+                )
+
+        # Validate language if provided
+        if update_data.languageId is not None:
+            language = await self.repository.get_language_by_id(update_data.languageId)
+            if not language:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ManuscriptErrorCode.INVALID_LANGUAGE_ID
+                )
+
+        # Update fields (all except status)
+        if update_data.title is not None:
+            manuscript.title = update_data.title
+        if update_data.abstract is not None:
+            manuscript.abstract = update_data.abstract
+        if update_data.keywords is not None:
+            manuscript.keywords = update_data.keywords
+        if update_data.themeId is not None:
+            manuscript.theme_id = update_data.themeId
+        if update_data.sectionId is not None:
+            manuscript.section_id = update_data.sectionId
+        if update_data.languageId is not None:
+            manuscript.language_id = update_data.languageId
+        if update_data.pdfFilename is not None:
+            manuscript.pdf_filename = update_data.pdfFilename
+
+        updated_manuscript = await self.repository.update_manuscript(manuscript)
+        logger.info(f"Manuscript {manuscript_id} updated successfully by staff")
+
+        # Return detailed response
+        return await self.get_manuscript_detail_for_staff(manuscript_id)
+
+    async def update_manuscript_status(
+        self,
+        manuscript_id: int,
+        status_data: ManuscriptStatusUpdate
+    ) -> ManuscriptDetailResponse:
+        """Update manuscript status (REVISION_REQUESTED, ACCEPTED, REJECTED, or PUBLISHED)"""
+        from datetime import datetime
+        
+        logger.info(f"Updating manuscript {manuscript_id} status to {status_data.status}")
+
+        # Validate allowed status
+        if not status_data.validate_allowed_status():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Status can only be REVISION_REQUESTED, ACCEPTED, REJECTED, or PUBLISHED"
+            )
+
+        manuscript = await self.repository.get_manuscript_by_id(manuscript_id)
+        
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        # Update status
+        manuscript.status = status_data.status
+        
+        # Update decision_at if status is ACCEPTED or REJECTED
+        if status_data.status in [ManuscriptStatus.ACCEPTED, ManuscriptStatus.REJECTED]:
+            manuscript.decision_at = datetime.utcnow()
+        
+        # Update published_at if status is PUBLISHED
+        if status_data.status == ManuscriptStatus.PUBLISHED:
+            manuscript.published_at = datetime.utcnow()
+
+        await self.repository.update_manuscript(manuscript)
+        logger.info(f"Manuscript {manuscript_id} status changed to {status_data.status}")
+
+        # Return detailed response
+        return await self.get_manuscript_detail_for_staff(manuscript_id)

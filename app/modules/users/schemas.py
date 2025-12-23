@@ -3,7 +3,7 @@ Pydantic schemas for users module.
 All API request/response schemas use camelCase for field names.
 """
 from pydantic import Field, EmailStr, ConfigDict, field_validator
-from typing import Optional, List
+from typing import Optional, List, Annotated
 from datetime import datetime
 from app.schemas.base import BaseSchema, TimestampSchema
 
@@ -20,6 +20,16 @@ class UserBase(BaseSchema):
 class UserCreate(UserBase):
     """Schema for creating a new user."""
     password: str = Field(..., min_length=8, max_length=100, description="User password")
+
+
+class EvaluatorCreate(BaseSchema):
+    """Schema for creating an evaluator (by editor)."""
+    email: EmailStr = Field(..., description="Evaluator email address")
+    full_name: str = Field(..., min_length=1, max_length=150, description="Evaluator full name", alias="fullName")
+    orcid_id: Optional[str] = Field(None, max_length=50, description="ORCID identifier", alias="orcidId")
+    bio: Optional[str] = Field(None, description="Evaluator biography")
+    position: Optional[str] = Field(None, max_length=150, description="Current position")
+    institution: Optional[str] = Field(None, max_length=255, description="Institution name")
 
 
 class UserUpdate(BaseSchema):
@@ -44,6 +54,11 @@ class PasswordChange(BaseSchema):
     """Schema for changing user password."""
     current_password: str = Field(..., description="Current password", alias="currentPassword")
     new_password: str = Field(..., min_length=8, max_length=100, description="New password", alias="newPassword")
+
+
+class AdminPasswordReset(BaseSchema):
+    """Schema for admin to reset user password."""
+    new_password: Annotated[str, Field(min_length=8, max_length=100, description="New password", alias="newPassword")]
 
 
 class UserActivation(BaseSchema):

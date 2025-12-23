@@ -114,6 +114,49 @@ class UserRepository:
 
         return list(users), total
 
+    async def get_all_evaluators(
+        self,
+        skip: int = 0,
+        limit: int = 100
+    ) -> Tuple[List[User], int]:
+        """
+        Get all users with EVALUATOR role.
+
+        Returns:
+            Tuple of (evaluators list, total count)
+        """
+        # Subquery to get user IDs with EVALUATOR role (role_id = 3)
+        evaluator_subquery = (
+            select(UserRole.user_id)
+            .where(UserRole.role_id == 3)
+        )
+        
+        # Build query for evaluators
+        query = (
+            select(User)
+            .where(User.id.in_(evaluator_subquery))
+            .options(
+                selectinload(User.user_roles).selectinload(UserRole.role)
+            )
+        )
+        
+        # Get total count
+        count_query = (
+            select(func.count())
+            .select_from(User)
+            .where(User.id.in_(evaluator_subquery))
+        )
+        
+        total_result = await self.db.execute(count_query)
+        total = total_result.scalar()
+        
+        # Get paginated results
+        query = query.offset(skip).limit(limit).order_by(User.created_at.desc())
+        result = await self.db.execute(query)
+        evaluators = result.scalars().all()
+        
+        return list(evaluators), total
+
     async def create(self, data: UserCreate, password_hash: str) -> User:
         """Create a new user."""
         user = User(
@@ -131,6 +174,28 @@ class UserRepository:
 
         logger.info(f"User created: {user.email} (ID: {user.id})")
         return user
+
+    async def create_user_model(self, user: User) -> User:
+        """Create a user from a User model instance."""
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
+        logger.info(f"User created: {user.email} (ID: {user.id})")
+        return user
+
+    async def assign_role(self, user_id: int, role_id: int, assigned_by_id: int) -> None:
+        """Assign a role to a user."""
+        from datetime import datetime
+        
+        user_role = UserRole(
+            user_id=user_id,
+            role_id=role_id,
+            assigned_by=assigned_by_id,
+            assigned_at=datetime.utcnow()
+        )
+        self.db.add(user_role)
+        await self.db.commit()
+        logger.info(f"Role {role_id} assigned to user {user_id}")
 
     async def update(self, user_id: int, data: UserUpdate) -> Optional[User]:
         """Update an existing user."""

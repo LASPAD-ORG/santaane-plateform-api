@@ -4,11 +4,14 @@ Handles database operations for manuscripts
 """
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import Optional
+from sqlalchemy.orm import selectinload
+from typing import Optional, List
 from app.models.manuscript import Manuscript
 from app.models.theme import Theme
 from app.models.section import Section
 from app.models.language import Language
+from app.models.user import User
+from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 
 
 class ManuscriptRepository:
@@ -35,6 +38,13 @@ class ManuscriptRepository:
         """Get language by ID"""
         result = await self.session.execute(
             select(Language).where(Language.id == language_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_user_by_id(self, user_id: int) -> Optional[User]:
+        """Get user by ID"""
+        result = await self.session.execute(
+            select(User).where(User.id == user_id)
         )
         return result.scalar_one_or_none()
 
@@ -75,6 +85,61 @@ class ManuscriptRepository:
             select(func.count(Manuscript.id)).where(Manuscript.author_id == author_id)
         )
         return result.scalar_one()
+
+    async def get_all_manuscripts(
+        self,
+        theme_id: int | None = None,
+        section_id: int | None = None,
+        language_id: int | None = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> list[Manuscript]:
+        """Get all manuscripts with optional filters"""
+        query = select(Manuscript)
+        
+        # Apply filters
+        if theme_id is not None:
+            query = query.where(Manuscript.theme_id == theme_id)
+        if section_id is not None:
+            query = query.where(Manuscript.section_id == section_id)
+        if language_id is not None:
+            query = query.where(Manuscript.language_id == language_id)
+        
+        query = query.order_by(Manuscript.created_at.desc()).offset(skip).limit(limit)
+        
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
+    async def count_all_manuscripts(
+        self,
+        theme_id: int | None = None,
+        section_id: int | None = None,
+        language_id: int | None = None
+    ) -> int:
+        """Count all manuscripts with optional filters"""
+        from sqlalchemy import func
+        query = select(func.count(Manuscript.id))
+        
+        # Apply same filters
+        if theme_id is not None:
+            query = query.where(Manuscript.theme_id == theme_id)
+        if section_id is not None:
+            query = query.where(Manuscript.section_id == section_id)
+        if language_id is not None:
+            query = query.where(Manuscript.language_id == language_id)
+        
+        result = await self.session.execute(query)
+        return result.scalar_one()
+
+    async def get_manuscript_evaluators(self, manuscript_id: int) -> List[ManuscriptEvaluatorLink]:
+        """Get all evaluators assigned to a manuscript with their information"""
+        query = (
+            select(ManuscriptEvaluatorLink)
+            .where(ManuscriptEvaluatorLink.manuscript_id == manuscript_id)
+            .options(selectinload(ManuscriptEvaluatorLink.evaluator))
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
 
     async def update_manuscript(self, manuscript: Manuscript) -> Manuscript:
         """Update an existing manuscript"""

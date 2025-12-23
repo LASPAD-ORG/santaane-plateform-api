@@ -13,8 +13,10 @@ from app.modules.users.schemas import (
     UserWithRolesResponse,
     UserDetailResponse,
     PasswordChange,
+    AdminPasswordReset,
     UserActivation,
-    RoleInfo
+    RoleInfo,
+    EvaluatorCreate
 )
 from app.models.user import User
 from app.core.security import hash_password, verify_password
@@ -75,6 +77,80 @@ class UserService:
         user = await self.repository.create(data, password_hash)
         return UserResponse.model_validate(user)
 
+    async def create_evaluator(
+        self,
+        data: EvaluatorCreate,
+        current_user: User
+    ) -> UserWithRolesResponse:
+        """
+        Create a new evaluator account.
+        Only EDITOR and SUPER_ADMIN can create evaluators.
+        Generates a random password and sends it via email.
+        """
+        import secrets
+        import string
+        from app.core.email import EmailService
+        
+        # Check if user with email already exists
+        existing = await self.repository.get_by_email(data.email)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User with email '{data.email}' already exists"
+            )
+
+        # Generate random password (12 characters: letters, digits, and special chars)
+        alphabet = string.ascii_letters + string.digits + "!@#$%&*"
+        password = ''.join(secrets.choice(alphabet) for _ in range(12))
+        
+        # Hash password
+        password_hash = hash_password(password)
+
+        # Create user with additional fields
+        from app.models.user import User as UserModel
+        user_data = UserModel(
+            email=data.email,
+            email_verified=False,
+            password_hash=password_hash,
+            full_name=data.full_name,
+            orcid_id=data.orcid_id,
+            bio=data.bio,
+            position=data.position,
+            institution=data.institution,
+            is_active=True
+        )
+        
+        user = await self.repository.create_user_model(user_data)
+        
+        # Assign EVALUATOR role (role_id = 3)
+        await self.repository.assign_role(user.id, 3, current_user.id)
+        
+        # Send welcome email with credentials
+        email_sent = EmailService.send_welcome_email(
+            to_email=data.email,
+            full_name=data.full_name,
+            password=password,
+            role="EVALUATOR"
+        )
+        
+        if not email_sent:
+            logger.warning(f"Failed to send welcome email to {data.email}")
+        
+        # Get user with roles
+        user_with_roles = await self.repository.get_with_roles(user.id)
+        
+        # Convert to response
+        roles = []
+        if hasattr(user_with_roles, 'user_roles') and user_with_roles.user_roles:
+            for ur in user_with_roles.user_roles:
+                if hasattr(ur, 'role') and ur.role:
+                    roles.append(RoleInfo.model_validate(ur.role))
+        
+        user_dict = UserResponse.model_validate(user_with_roles).model_dump()
+        user_dict['roles'] = roles
+        
+        return UserWithRolesResponse(**user_dict)
+
     async def get_user(self, user_id: int, current_user: User) -> UserWithRolesResponse:
         """
         Get user by ID with roles.
@@ -99,6 +175,41 @@ class UserService:
         user_dict['roles'] = roles
 
         return UserWithRolesResponse(**user_dict)
+
+    async def list_evaluators(
+        self,
+        skip: int = 0,
+        limit: int = 100
+    ) -> PaginatedResponse[UserWithRolesResponse]:
+        """List all evaluators with pagination."""
+        evaluators, total = await self.repository.get_all_evaluators(
+            skip=skip,
+            limit=limit
+        )
+
+        # Convert evaluators with roles
+        items = []
+        for evaluator in evaluators:
+            # Safely extract roles
+            roles = []
+            if hasattr(evaluator, 'user_roles') and evaluator.user_roles:
+                for ur in evaluator.user_roles:
+                    if hasattr(ur, 'role') and ur.role:
+                        roles.append(RoleInfo.model_validate(ur.role))
+
+            # Create user response
+            user_dict = UserResponse.model_validate(evaluator).model_dump()
+            user_dict['roles'] = roles
+
+            items.append(UserWithRolesResponse(**user_dict))
+
+        return PaginatedResponse(
+            items=items,
+            total=total,
+            skip=skip,
+            limit=limit,
+            has_more=(skip + limit) < total
+        )
 
     async def list_users(
         self,
@@ -234,6 +345,38 @@ class UserService:
             )
 
         return {"message": "Password updated successfully"}
+
+    async def reset_user_password(
+        self,
+        user_id: int,
+        data: AdminPasswordReset,
+        current_user: User
+    ) -> dict:
+        """
+        Reset user password (admin only).
+        Admin does not need to know current password.
+        """
+        # Get target user
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User with ID {user_id} not found"
+            )
+
+        # Hash new password
+        new_password_hash = hash_password(data.new_password)
+
+        # Update password
+        success = await self.repository.update_password(user_id, new_password_hash)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to reset password"
+            )
+
+        logger.info(f"Admin {current_user.id} reset password for user {user_id}")
+        return {"message": "Password reset successfully"}
 
     async def activate_user(
         self,
