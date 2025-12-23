@@ -10,6 +10,7 @@ from enum import Enum
 class ManuscriptStatus(str, Enum):
     """Manuscript lifecycle status"""
     SUBMITTED = "submitted"
+    RE_SUBMITTED = "re_submitted"
     UNDER_REVIEW = "under_review"
     REVISED = "revised"
     ACCEPTED = "accepted"

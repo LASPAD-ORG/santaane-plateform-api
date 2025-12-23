@@ -75,3 +75,10 @@ class ManuscriptRepository:
             select(func.count(Manuscript.id)).where(Manuscript.author_id == author_id)
         )
         return result.scalar_one()
+
+    async def update_manuscript(self, manuscript: Manuscript) -> Manuscript:
+        """Update an existing manuscript"""
+        self.session.add(manuscript)
+        await self.session.commit()
+        await self.session.refresh(manuscript)
+        return manuscript

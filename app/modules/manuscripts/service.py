@@ -7,7 +7,8 @@ from app.modules.manuscripts.repository import ManuscriptRepository
 from app.modules.manuscripts.schemas import (
     ManuscriptSubmit, 
     ManuscriptResponse,
-    ManuscriptListResponse
+    ManuscriptListResponse,
+    ManuscriptRevision
 )
 from app.modules.manuscripts.error_codes import ManuscriptErrorCode
 from app.models.manuscript import Manuscript
@@ -175,4 +176,105 @@ class ManuscriptService:
             pdfFilename=manuscript.pdf_filename,
             createdAt=manuscript.created_at,
             updatedAt=manuscript.updated_at
+        )
+
+    async def revise_manuscript(
+        self,
+        manuscript_id: int,
+        revision_data: "ManuscriptRevision",
+        current_user_id: int
+    ) -> "ManuscriptResponse":
+        """Revise a manuscript (only if status is REVISION_REQUESTED)"""
+        from app.models.enums import ManuscriptStatus
+        from datetime import datetime
+        
+        logger.info(f"Manuscript {manuscript_id} revision attempt by user {current_user_id}")
+
+        manuscript = await self.repository.get_manuscript_by_id(manuscript_id)
+        
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        # Verify that the current user is the author
+        if manuscript.author_id != current_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only revise your own manuscripts"
+            )
+
+        # Verify that the manuscript status is REVISION_REQUESTED
+        if manuscript.status != ManuscriptStatus.REVISION_REQUESTED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Manuscript can only be revised when status is 'revision_requested'. Current status: '{manuscript.status.value}'"
+            )
+
+        # Update fields if provided
+        if revision_data.title is not None:
+            manuscript.title = revision_data.title
+        if revision_data.abstract is not None:
+            manuscript.abstract = revision_data.abstract
+        if revision_data.keywords is not None:
+            manuscript.keywords = revision_data.keywords
+        if revision_data.pdfFilename is not None:
+            manuscript.pdf_filename = revision_data.pdfFilename
+        
+        # Validate and update theme if provided
+        if revision_data.themeId is not None:
+            theme = await self.repository.get_theme_by_id(revision_data.themeId)
+            if not theme:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ManuscriptErrorCode.INVALID_THEME_ID
+                )
+            manuscript.theme_id = revision_data.themeId
+        
+        # Validate and update section if provided
+        if revision_data.sectionId is not None:
+            section = await self.repository.get_section_by_id(revision_data.sectionId)
+            if not section:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ManuscriptErrorCode.INVALID_SECTION_ID
+                )
+            manuscript.section_id = revision_data.sectionId
+        
+        # Validate and update language if provided
+        if revision_data.languageId is not None:
+            language = await self.repository.get_language_by_id(revision_data.languageId)
+            if not language:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ManuscriptErrorCode.INVALID_LANGUAGE_ID
+                )
+            manuscript.language_id = revision_data.languageId
+
+        # Update status to RE_SUBMITTED
+        manuscript.status = ManuscriptStatus.RE_SUBMITTED
+        manuscript.last_revision_at = datetime.utcnow()
+
+        # Save changes
+        updated_manuscript = await self.repository.update_manuscript(manuscript)
+        logger.info(f"Manuscript {manuscript_id} revised and re-submitted by user {current_user_id}")
+
+        # Fetch related data for response
+        theme = await self.repository.get_theme_by_id(updated_manuscript.theme_id) if updated_manuscript.theme_id else None
+        section = await self.repository.get_section_by_id(updated_manuscript.section_id)
+        language = await self.repository.get_language_by_id(updated_manuscript.language_id)
+
+        return ManuscriptResponse(
+            id=updated_manuscript.id,
+            title=updated_manuscript.title,
+            abstract=updated_manuscript.abstract,
+            keywords=updated_manuscript.keywords,
+            themeName=theme.title if theme else None,
+            sectionName=section.name if section else "",
+            languageName=language.name if language else "",
+            status=updated_manuscript.status,
+            pdfFilename=updated_manuscript.pdf_filename,
+            createdAt=updated_manuscript.created_at,
+            updatedAt=updated_manuscript.updated_at
         )

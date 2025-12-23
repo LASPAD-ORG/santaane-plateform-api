@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, status
 from app.modules.manuscripts.schemas import (
     ManuscriptSubmit, 
     ManuscriptResponse,
-    ManuscriptListResponse
+    ManuscriptListResponse,
+    ManuscriptRevision
 )
 from app.modules.manuscripts.service import ManuscriptService
 from app.modules.manuscripts.utils import get_manuscript_service
@@ -92,5 +93,39 @@ async def get_manuscript_details(
     """
     return await service.get_manuscript_details(
         manuscript_id=manuscript_id,
+        current_user_id=current_user.id
+    )
+
+
+@router.put(
+    "/{manuscript_id}/revise",
+    response_model=ManuscriptResponse,
+    dependencies=[Depends(require_role(UserRole.AUTHOR))]
+)
+async def revise_manuscript(
+    manuscript_id: int,
+    revision_data: ManuscriptRevision,
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    Revise a manuscript (only when status is REVISION_REQUESTED)
+    
+    Requires AUTHOR role
+    
+    After revision, the status will automatically change to RE_SUBMITTED
+    
+    - **manuscript_id**: ID of the manuscript to revise
+    - **title**: Optional new title
+    - **abstract**: Optional new abstract
+    - **keywords**: Optional new keywords
+    - **themeId**: Optional new theme ID
+    - **sectionId**: Optional new section ID
+    - **languageId**: Optional new language ID
+    - **pdfFilename**: Optional new PDF filename (upload new file first)
+    """
+    return await service.revise_manuscript(
+        manuscript_id=manuscript_id,
+        revision_data=revision_data,
         current_user_id=current_user.id
     )
