@@ -530,7 +530,7 @@ class ManuscriptService:
                     title=manuscript.title,
                     abstract=manuscript.abstract,
                     keywords=manuscript.keywords,
-                    themeName=manuscript.theme.name if manuscript.theme else None,
+                    themeName=manuscript.theme.title if manuscript.theme else None,
                     sectionName=manuscript.section.name,
                     languageName=manuscript.language.name,
                     status=manuscript.status,

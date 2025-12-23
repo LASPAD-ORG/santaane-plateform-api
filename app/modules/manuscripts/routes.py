@@ -204,6 +204,30 @@ async def update_manuscript_status(
 
 
 @router.get(
+    "/my-assignments",
+    response_model=List[EvaluatorManuscriptResponse],
+    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    summary="Get my manuscript assignments (Evaluator)"
+)
+async def get_my_assignments(
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    Get all manuscripts assigned to the current evaluator.
+    
+    **Requires:** EVALUATOR role
+    
+    **Returns:**
+    - List of manuscripts with assignment details
+    - Does NOT include author information for privacy
+    - Includes assignment status (PENDING, ACCEPTED, DECLINED)
+    - Includes evaluation deadline if set
+    """
+    return await service.get_my_assignments(current_user.id)
+
+
+@router.get(
     "/{manuscript_id}",
     response_model=ManuscriptResponse,
     dependencies=[Depends(require_role(UserRole.AUTHOR))]
@@ -260,27 +284,3 @@ async def revise_manuscript(
         revision_data=revision_data,
         current_user_id=current_user.id
     )
-
-
-@router.get(
-    "/my-assignments",
-    response_model=List[EvaluatorManuscriptResponse],
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
-    summary="Get my manuscript assignments (Evaluator)"
-)
-async def get_my_assignments(
-    current_user: User = Depends(get_current_user),
-    service: ManuscriptService = Depends(get_manuscript_service)
-):
-    """
-    Get all manuscripts assigned to the current evaluator.
-    
-    **Requires:** EVALUATOR role
-    
-    **Returns:**
-    - List of manuscripts with assignment details
-    - Does NOT include author information for privacy
-    - Includes assignment status (PENDING, ACCEPTED, DECLINED)
-    - Includes evaluation deadline if set
-    """
-    return await service.get_my_assignments(current_user.id)
