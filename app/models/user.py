@@ -13,6 +13,7 @@ from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 if TYPE_CHECKING:
     from app.models.manuscript import Manuscript
     from app.models.user_role import UserRole
+    from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
 
 
 class User(SQLModel, table=True):
@@ -62,6 +63,11 @@ class User(SQLModel, table=True):
     manuscript_annotations: Mapped[List["ManuscriptAnnotation"]] = Relationship(
         back_populates="evaluator",
         sa_relationship_kwargs={"foreign_keys": "[ManuscriptAnnotation.evaluator_id]"}
+    )
+
+    evaluation_grids: Mapped[List["ManuscriptEvaluationGrid"]] = Relationship(
+        back_populates="evaluator",
+        sa_relationship_kwargs={"foreign_keys": "[ManuscriptEvaluationGrid.evaluator_id]"}
     )
 
     user_roles: Mapped[List["UserRole"]] = Relationship(

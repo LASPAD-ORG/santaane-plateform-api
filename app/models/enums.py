@@ -46,6 +46,13 @@ class AnnotationType(str, Enum):
     FREETEXT = "freetext"
 
 
+class RecommendationType(str, Enum):
+    """Types de recommandations pour l'évaluation de manuscrits"""
+    ACCEPTED_WITH_VALIDATION = "accepted_with_validation"
+    RESUBMISSION_REQUIRED = "resubmission_required"
+    REJECTED = "rejected"
+
+
 # ==================== Editor Related Enums ====================
 
 class EditorRole(str, Enum):

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from app.models.section import Section
     from app.models.language import Language
     from app.models.manuscript_annotation import ManuscriptAnnotation
+    from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
 
 
 class Manuscript(SQLModel, table=True):
@@ -73,6 +74,12 @@ class Manuscript(SQLModel, table=True):
 
     # Annotations made by evaluators
     annotations: Mapped[List["ManuscriptAnnotation"]] = Relationship(
+        back_populates="manuscript",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+    # Evaluation grids made by evaluators
+    evaluation_grids: Mapped[List["ManuscriptEvaluationGrid"]] = Relationship(
         back_populates="manuscript",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )

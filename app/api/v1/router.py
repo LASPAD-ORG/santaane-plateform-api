@@ -10,6 +10,7 @@ from app.modules.files import routes as files
 from app.modules.manuscripts import routes as manuscripts
 from app.modules.manuscripts import evaluator_routes
 from app.modules.manuscripts import annotation_routes
+from app.modules.manuscripts import evaluation_grid_routes
 from app.modules.themes import router as themes_router
 from app.modules.languages import router as languages_router
 from app.modules.sections import router as sections_router
@@ -26,6 +27,7 @@ router.include_router(files.router)
 router.include_router(manuscripts.router)
 router.include_router(evaluator_routes.router)
 router.include_router(annotation_routes.router)
+router.include_router(evaluation_grid_routes.router)
 router.include_router(themes_router)
 router.include_router(languages_router)
 router.include_router(sections_router)
