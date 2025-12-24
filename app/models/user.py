@@ -59,6 +59,11 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "[ManuscriptEvaluatorLink.assigned_by_id]"}
     )
 
+    manuscript_annotations: Mapped[List["ManuscriptAnnotation"]] = Relationship(
+        back_populates="evaluator",
+        sa_relationship_kwargs={"foreign_keys": "[ManuscriptAnnotation.evaluator_id]"}
+    )
+
     user_roles: Mapped[List["UserRole"]] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"foreign_keys": "[UserRole.user_id]"}

@@ -1,12 +1,11 @@
 """
 Manuscript model - Main manuscript entity with lifecycle tracking
 """
-from __future__ import annotations
-
 from sqlmodel import SQLModel, Field, Relationship
 from typing import List, Optional, TYPE_CHECKING
 from datetime import datetime
 from sqlalchemy import Column, DateTime, func
+from sqlalchemy.orm import Mapped
 from app.models.enums import ManuscriptStatus
 
 # Import réel pour link_model
@@ -17,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.theme import Theme
     from app.models.section import Section
     from app.models.language import Language
+    from app.models.manuscript_annotation import ManuscriptAnnotation
 
 
 class Manuscript(SQLModel, table=True):
@@ -58,21 +58,27 @@ class Manuscript(SQLModel, table=True):
     # =========================
     # Relations ORM
     # =========================
-    author: User = Relationship(
+    author: "User" = Relationship(
         back_populates="manuscripts",
         sa_relationship_kwargs={"foreign_keys": "[Manuscript.author_id]"}
     )
-    theme: Theme = Relationship(back_populates="manuscripts")
-    section: Section = Relationship(back_populates="manuscripts")
-    language: Language = Relationship(back_populates="manuscripts")
+    theme: "Theme" = Relationship(back_populates="manuscripts")
+    section: "Section" = Relationship(back_populates="manuscripts")
+    language: "Language" = Relationship(back_populates="manuscripts")
 
-    evaluator_links: ManuscriptEvaluatorLink = Relationship(
+    evaluator_links: "ManuscriptEvaluatorLink" = Relationship(
+        back_populates="manuscript",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+    # Annotations made by evaluators
+    annotations: Mapped[List["ManuscriptAnnotation"]] = Relationship(
         back_populates="manuscript",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
     # Accès direct aux évaluateurs
-    evaluators: User = Relationship(
+    evaluators: "User" = Relationship(
         link_model=ManuscriptEvaluatorLink,
         sa_relationship_kwargs={
             "primaryjoin": "Manuscript.id==ManuscriptEvaluatorLink.manuscript_id",
