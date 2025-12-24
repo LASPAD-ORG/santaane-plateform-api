@@ -125,10 +125,10 @@ class UserRepository:
         Returns:
             Tuple of (evaluators list, total count)
         """
-        # Subquery to get user IDs with EVALUATOR role (role_id = 3)
+        # Subquery to get user IDs with EVALUATOR role (role_id = 4)
         evaluator_subquery = (
             select(UserRole.user_id)
-            .where(UserRole.role_id == 3)
+            .where(UserRole.role_id == 4)
         )
         
         # Build query for evaluators

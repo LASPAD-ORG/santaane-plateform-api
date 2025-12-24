@@ -34,18 +34,20 @@ async def create_annotation(
 ):
     """
     Create a new annotation on a manuscript PDF.
-    
+
     **Requires:** EVALUATOR role + ACCEPTED assignment
-    
+
     **Parameters:**
     - **manuscript_id**: ID of the manuscript
+    - **annotationType**: Type of annotation ('text', 'area', or 'freetext')
     - **pageNumber**: Page number in the PDF (1-based)
     - **xPosition**: X coordinate on the page
     - **yPosition**: Y coordinate on the page
-    - **comment**: The annotation comment
-    - **highlightedText**: Optional text that was highlighted
-    
-    **Returns:** Created annotation with details
+    - **positionData**: JSON stringified position data
+    - **comment**: The annotation comment (1-5000 characters)
+    - **contentData**: Optional JSON stringified content data
+
+    **Returns:** Created annotation with UUID and all details
     """
     service = AnnotationService(db)
     return await service.create_annotation(
@@ -87,20 +89,20 @@ async def get_my_annotations(
     summary="Update annotation"
 )
 async def update_annotation(
-    annotation_id: int,
+    annotation_id: str,
     data: AnnotationUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Update an existing annotation.
-    
+
     **Requires:** EVALUATOR role + must be the annotation creator
-    
+
     **Parameters:**
-    - **annotation_id**: ID of the annotation to update
+    - **annotation_id**: UUID of the annotation to update
     - **comment**: Updated comment text
-    
+
     **Returns:** Updated annotation
     """
     service = AnnotationService(db)
@@ -118,18 +120,18 @@ async def update_annotation(
     summary="Delete annotation"
 )
 async def delete_annotation(
-    annotation_id: int,
+    annotation_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Delete an annotation.
-    
+
     **Requires:** EVALUATOR role + must be the annotation creator
-    
+
     **Parameters:**
-    - **annotation_id**: ID of the annotation to delete
-    
+    - **annotation_id**: UUID of the annotation to delete
+
     **Returns:** Success message
     """
     service = AnnotationService(db)

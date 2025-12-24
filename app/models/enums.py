@@ -39,6 +39,13 @@ class ManuscriptFileType(str, Enum):
     OTHER = "other"
 
 
+class AnnotationType(str, Enum):
+    """Types of manuscript annotations"""
+    TEXT = "text"
+    AREA = "area"
+    FREETEXT = "freetext"
+
+
 # ==================== Editor Related Enums ====================
 
 class EditorRole(str, Enum):

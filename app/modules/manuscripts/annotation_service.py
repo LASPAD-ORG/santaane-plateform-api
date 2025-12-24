@@ -6,6 +6,8 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import List
+from datetime import datetime
+import uuid
 from app.models.manuscript_annotation import ManuscriptAnnotation
 from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 from app.models.manuscript import Manuscript
@@ -57,13 +59,16 @@ class AnnotationService:
 
         # Create annotation
         annotation = ManuscriptAnnotation(
+            id=str(uuid.uuid4()),
             manuscript_id=manuscript_id,
             evaluator_id=evaluator_id,
+            annotation_type=data.annotationType,
             page_number=data.pageNumber,
             x_position=data.xPosition,
             y_position=data.yPosition,
+            position_data=data.positionData,
             comment=data.comment,
-            highlighted_text=data.highlightedText
+            content_data=data.contentData
         )
 
         self.db.add(annotation)
@@ -82,11 +87,13 @@ class AnnotationService:
             manuscriptId=annotation.manuscript_id,
             evaluatorId=annotation.evaluator_id,
             evaluatorName=evaluator.full_name,
+            annotationType=annotation.annotation_type,
             pageNumber=annotation.page_number,
             xPosition=annotation.x_position,
             yPosition=annotation.y_position,
+            positionData=annotation.position_data,
             comment=annotation.comment,
-            highlightedText=annotation.highlighted_text,
+            contentData=annotation.content_data,
             createdAt=annotation.created_at,
             updatedAt=annotation.updated_at
         )
@@ -136,11 +143,13 @@ class AnnotationService:
                 manuscriptId=ann.manuscript_id,
                 evaluatorId=ann.evaluator_id,
                 evaluatorName=ann.evaluator.full_name,
+                annotationType=ann.annotation_type,
                 pageNumber=ann.page_number,
                 xPosition=ann.x_position,
                 yPosition=ann.y_position,
+                positionData=ann.position_data,
                 comment=ann.comment,
-                highlightedText=ann.highlighted_text,
+                contentData=ann.content_data,
                 createdAt=ann.created_at,
                 updatedAt=ann.updated_at
             )
@@ -149,7 +158,7 @@ class AnnotationService:
 
     async def update_annotation(
         self,
-        annotation_id: int,
+        annotation_id: str,
         evaluator_id: int,
         data: AnnotationUpdate
     ) -> AnnotationResponse:
@@ -189,18 +198,20 @@ class AnnotationService:
             manuscriptId=annotation.manuscript_id,
             evaluatorId=annotation.evaluator_id,
             evaluatorName=annotation.evaluator.full_name,
+            annotationType=annotation.annotation_type,
             pageNumber=annotation.page_number,
             xPosition=annotation.x_position,
             yPosition=annotation.y_position,
+            positionData=annotation.position_data,
             comment=annotation.comment,
-            highlightedText=annotation.highlighted_text,
+            contentData=annotation.content_data,
             createdAt=annotation.created_at,
             updatedAt=annotation.updated_at
         )
 
     async def delete_annotation(
         self,
-        annotation_id: int,
+        annotation_id: str,
         evaluator_id: int
     ) -> dict:
         """Delete an annotation. Only the creator can delete their annotation."""
@@ -228,6 +239,3 @@ class AnnotationService:
 
         logger.info(f"Annotation {annotation_id} deleted successfully")
         return {"message": "Annotation deleted successfully"}
-
-
-from datetime import datetime
