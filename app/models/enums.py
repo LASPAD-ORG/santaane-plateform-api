@@ -44,6 +44,7 @@ class AnnotationType(str, Enum):
     TEXT = "text"
     AREA = "area"
     FREETEXT = "freetext"
+    REDACTION = "redaction"  # For anonymization by EDITOR
 
 
 class RecommendationType(str, Enum):

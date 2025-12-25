@@ -20,7 +20,7 @@ class ManuscriptAnnotation(SQLModel, table=True):
     __tablename__ = "manuscript_annotations"
     __table_args__ = (
         CheckConstraint(
-            "annotation_type IN ('text', 'area', 'freetext')",
+            "annotation_type IN ('text', 'area', 'freetext', 'redaction')",
             name="check_annotation_type"
         ),
     )
@@ -49,7 +49,14 @@ class ManuscriptAnnotation(SQLModel, table=True):
     annotation_type: str = Field(
         nullable=False,
         max_length=20,
-        description="Type of annotation: 'text', 'area', or 'freetext'"
+        description="Type of annotation: 'text', 'area', 'freetext', or 'redaction'"
+    )
+
+    # Role of the creator (to distinguish EDITOR redactions from EVALUATOR annotations)
+    created_by_role: Optional[str] = Field(
+        default=None,
+        max_length=20,
+        description="Role of creator: 'EDITOR' for redactions, 'EVALUATOR' for annotations"
     )
 
     # PDF position information (kept for backward compatibility and quick queries)

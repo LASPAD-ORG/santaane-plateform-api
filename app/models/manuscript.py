@@ -61,6 +61,23 @@ class Manuscript(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     )
 
+    # --- Anonymisation ---
+    is_anonymized: bool = Field(
+        default=False,
+        nullable=False,
+        index=True,
+        description="True si le manuscrit a été anonymisé (requis avant assignation évaluateur)"
+    )
+    anonymized_at: Optional[datetime] = Field(
+        default=None,
+        description="Date/heure de marquage comme anonymisé"
+    )
+    anonymized_by_id: Optional[int] = Field(
+        default=None,
+        foreign_key="users.id",
+        description="ID de l'éditeur qui a marqué comme anonymisé"
+    )
+
     # =========================
     # Relations ORM
     # =========================
@@ -97,4 +114,9 @@ class Manuscript(SQLModel, table=True):
             "secondaryjoin": "User.id==ManuscriptEvaluatorLink.evaluator_id",
             "viewonly": True
         }
+    )
+
+    # Éditeur qui a anonymisé
+    anonymized_by: Optional["User"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[Manuscript.anonymized_by_id]"}
     )

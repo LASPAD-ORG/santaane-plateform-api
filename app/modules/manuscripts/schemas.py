@@ -89,9 +89,13 @@ class ManuscriptResponse(BaseModel):
     status: ManuscriptStatus
     pdfFilename: str
     evaluators: List[EvaluatorAssignment] = Field(default_factory=list)
+    # Anonymisation fields
+    isAnonymized: bool = Field(default=False)
+    anonymizedAt: Optional[datetime] = None
+    anonymizedByName: Optional[str] = None
     createdAt: datetime
     updatedAt: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -110,9 +114,13 @@ class ManuscriptDetailResponse(BaseModel):
     status: ManuscriptStatus
     pdfFilename: str
     author: AuthorInfo
+    # Anonymisation fields
+    isAnonymized: bool = Field(default=False)
+    anonymizedAt: Optional[datetime] = None
+    anonymizedByName: Optional[str] = None
     createdAt: datetime
     updatedAt: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 

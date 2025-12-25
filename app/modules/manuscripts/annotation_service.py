@@ -106,6 +106,7 @@ class AnnotationService:
         """
         Get all annotations for a manuscript.
         Evaluators can only see their own annotations.
+        IMPORTANT: NEVER return REDACTION type to evaluators.
         """
         logger.info(f"Fetching annotations for manuscript {manuscript_id} by evaluator {evaluator_id}")
 
@@ -123,12 +124,13 @@ class AnnotationService:
                 detail="You are not assigned to this manuscript"
             )
 
-        # Get annotations
+        # Get annotations - EXCLUDE REDACTION type
         query = (
             select(ManuscriptAnnotation)
             .where(
                 ManuscriptAnnotation.manuscript_id == manuscript_id,
-                ManuscriptAnnotation.evaluator_id == evaluator_id
+                ManuscriptAnnotation.evaluator_id == evaluator_id,
+                ManuscriptAnnotation.annotation_type != "redaction"  # CRITICAL: Never expose redactions
             )
             .options(selectinload(ManuscriptAnnotation.evaluator))
             .order_by(ManuscriptAnnotation.page_number, ManuscriptAnnotation.created_at)

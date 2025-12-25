@@ -39,7 +39,14 @@ class EvaluatorAssignmentService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Manuscript with ID {manuscript_id} not found"
             )
-        
+
+        # CRITICAL: Verify that manuscript is anonymized before allowing assignment
+        if not manuscript.is_anonymized:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot assign evaluator: manuscript must be anonymized first"
+            )
+
         # Check if evaluator exists and has EVALUATOR role (role_id = 3)
         evaluator_result = await self.db.execute(
             select(User).where(User.id == evaluator_id)
