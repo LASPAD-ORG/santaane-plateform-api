@@ -4,7 +4,7 @@ API routes for evaluator assignment management
 from fastapi import APIRouter, Depends, status
 from app.db import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.permissions import require_any_role, get_current_user
+from app.core.permissions import require_any_role, get_current_user, require_role
 from app.core.roles import UserRole
 from app.models.user import User
 from app.modules.manuscripts.evaluator_schemas import (
@@ -12,6 +12,7 @@ from app.modules.manuscripts.evaluator_schemas import (
     EvaluatorResponseRequest
 )
 from app.modules.manuscripts.evaluator_service import EvaluatorAssignmentService
+from app.modules.manuscripts.evaluator_manuscript_service import EvaluatorManuscriptService
 
 
 router = APIRouter(prefix="/manuscripts", tags=["Manuscript Evaluators"])
@@ -88,3 +89,46 @@ async def respond_to_evaluation_assignment(
         evaluator_id=current_user.id,
         accept=data.accept
     )
+
+
+@router.get(
+    "/{manuscript_id}/evaluation-status",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    summary="Get manuscript evaluation status for current evaluator"
+)
+async def get_manuscript_evaluation_status_for_evaluator(
+    manuscript_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get evaluation status for a manuscript specific to the current evaluator.
+    
+    **Requires:** EVALUATOR role
+    
+    **Parameters:**
+    - **manuscript_id**: ID of the manuscript
+    
+    **Returns:**
+    - **evaluationStatus**: 'not_started', 'in_progress', or 'completed'
+    
+    **Status Logic:**
+    - **not_started**: Evaluator assigned but no evaluation grid exists
+    - **in_progress**: Evaluation grid exists but not submitted (submitted_at is NULL)  
+    - **completed**: Evaluation grid submitted (submitted_at is not NULL)
+    
+    **Errors:**
+    - **403**: Evaluator not assigned to manuscript or hasn't accepted assignment
+    """
+    service = EvaluatorManuscriptService(db)
+    evaluation_status = await service.get_manuscript_evaluation_status_for_evaluator(
+        manuscript_id=manuscript_id,
+        evaluator_id=current_user.id
+    )
+    
+    return {
+        "manuscriptId": manuscript_id,
+        "evaluationStatus": evaluation_status
+    }
