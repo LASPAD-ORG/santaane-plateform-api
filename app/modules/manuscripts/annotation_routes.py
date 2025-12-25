@@ -11,7 +11,8 @@ from app.models.user import User
 from app.modules.manuscripts.annotation_schemas import (
     AnnotationCreate,
     AnnotationUpdate,
-    AnnotationResponse
+    AnnotationResponse,
+    RedactionMaskResponse
 )
 from app.modules.manuscripts.annotation_service import AnnotationService
 
@@ -137,5 +138,33 @@ async def delete_annotation(
     service = AnnotationService(db)
     return await service.delete_annotation(
         annotation_id=annotation_id,
+        evaluator_id=current_user.id
+    )
+
+
+@router.get(
+    "/{manuscript_id}/redaction-masks",
+    response_model=List[RedactionMaskResponse],
+    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    summary="Get redaction masks for evaluator view"
+)
+async def get_redaction_masks(
+    manuscript_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get redaction masks for an evaluator to view anonymized manuscript.
+    
+    Returns only position data to render black masks over redacted areas.
+    Does NOT expose any redaction content or comments for anonymization.
+    
+    **Requires:** EVALUATOR role + assignment to manuscript
+    
+    **Returns:** List of redaction positions for masking (no sensitive data)
+    """
+    service = AnnotationService(db)
+    return await service.get_redaction_masks(
+        manuscript_id=manuscript_id,
         evaluator_id=current_user.id
     )

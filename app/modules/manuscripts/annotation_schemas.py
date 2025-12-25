@@ -93,3 +93,13 @@ class AnnotationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class RedactionMaskResponse(BaseModel):
+    """Schema for redaction mask - only position data for anonymization"""
+    id: str = Field(..., description="Unique identifier of the redaction")
+    pageNumber: int = Field(..., ge=1, description="Page number in the PDF (1-based)")
+    positionData: str = Field(..., description="Stringified JSON position data for masking")
+
+    class Config:
+        from_attributes = True

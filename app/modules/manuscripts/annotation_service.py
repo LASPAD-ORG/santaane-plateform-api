@@ -13,7 +13,7 @@ from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 from app.models.manuscript import Manuscript
 from app.models.user import User
 from app.models.enums import EvaluatorAssignmentStatus
-from app.modules.manuscripts.annotation_schemas import AnnotationCreate, AnnotationUpdate, AnnotationResponse
+from app.modules.manuscripts.annotation_schemas import AnnotationCreate, AnnotationUpdate, AnnotationResponse, RedactionMaskResponse
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -241,3 +241,55 @@ class AnnotationService:
 
         logger.info(f"Annotation {annotation_id} deleted successfully")
         return {"message": "Annotation deleted successfully"}
+
+    async def get_redaction_masks(
+        self,
+        manuscript_id: int,
+        evaluator_id: int
+    ) -> List[RedactionMaskResponse]:
+        """
+        Get redaction masks for an evaluator to see anonymized zones.
+        
+        Returns ONLY position data to create black masks.
+        Does NOT expose any redaction content or comments.
+        This preserves anonymization while showing evaluators where redactions are.
+        """
+        logger.info(f"Fetching redaction masks for manuscript {manuscript_id} by evaluator {evaluator_id}")
+
+        # Verify evaluator is assigned to this manuscript
+        assignment_query = select(ManuscriptEvaluatorLink).where(
+            ManuscriptEvaluatorLink.manuscript_id == manuscript_id,
+            ManuscriptEvaluatorLink.evaluator_id == evaluator_id
+        )
+        assignment_result = await self.db.execute(assignment_query)
+        assignment = assignment_result.scalar_one_or_none()
+
+        if not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not assigned to this manuscript"
+            )
+
+        # Get ONLY redaction type annotations (created by EDITORs)
+        # Return ONLY id, page_number, and position_data for masking
+        query = (
+            select(ManuscriptAnnotation)
+            .where(
+                ManuscriptAnnotation.manuscript_id == manuscript_id,
+                ManuscriptAnnotation.annotation_type == "redaction"
+            )
+            .order_by(ManuscriptAnnotation.page_number)
+        )
+        
+        result = await self.db.execute(query)
+        redactions = result.scalars().all()
+
+        # Return ONLY position data for black masking - NO sensitive content
+        return [
+            RedactionMaskResponse(
+                id=redaction.id,
+                pageNumber=redaction.page_number,
+                positionData=redaction.position_data  # Only position for masking
+            )
+            for redaction in redactions
+        ]
