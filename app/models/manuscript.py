@@ -4,9 +4,9 @@ Manuscript model - Main manuscript entity with lifecycle tracking
 from sqlmodel import SQLModel, Field, Relationship
 from typing import List, Optional, TYPE_CHECKING
 from datetime import datetime
-from sqlalchemy import Column, DateTime, func
+from sqlalchemy import Column, DateTime, String, func
 from sqlalchemy.orm import Mapped
-from app.models.enums import ManuscriptStatus
+from app.models.enums import ManuscriptStatus, ManuscriptEvaluationStatus
 
 # Import réel pour link_model
 from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
@@ -37,6 +37,11 @@ class Manuscript(SQLModel, table=True):
 
     # --- Workflow ---
     status: ManuscriptStatus = Field(default=ManuscriptStatus.SUBMITTED, nullable=False, index=True)
+    evaluation_status: ManuscriptEvaluationStatus = Field(
+        default=ManuscriptEvaluationStatus.PENDING,
+        sa_column=Column(String(50), nullable=False, index=True),
+        description="Statut du processus d'évaluation par les évaluateurs"
+    )
 
     # --- PDF obligatoire ---
     pdf_filename: str = Field(max_length=255, nullable=False)

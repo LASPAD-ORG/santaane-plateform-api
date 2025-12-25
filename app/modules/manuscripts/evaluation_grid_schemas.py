@@ -87,3 +87,16 @@ class SubmitEvaluationResponse(BaseModel):
     submittedAt: datetime
     annotationsCount: int
     evaluationGrid: dict
+
+
+class ManuscriptEvaluationStatusResponse(BaseModel):
+    """Schema for manuscript evaluation status response"""
+    manuscriptId: int
+    evaluationStatus: str
+    assignedEvaluators: int
+    submittedEvaluations: int
+    isFullyEvaluated: bool
+    progress: float = Field(description="Pourcentage de complétion (0-100)")
+
+    class Config:
+        from_attributes = True

@@ -2,7 +2,7 @@
 Service layer for manuscript evaluation grids
 Handles business logic for evaluation grid CRUD operations
 """
-from sqlmodel import select
+from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import and_
 from fastapi import HTTPException, status
@@ -13,12 +13,13 @@ from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
 from app.models.manuscript import Manuscript
 from app.models.user import User
 from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
-from app.models.enums import EvaluatorAssignmentStatus
+from app.models.enums import EvaluatorAssignmentStatus, ManuscriptEvaluationStatus
 from app.models.manuscript_annotation import ManuscriptAnnotation
 from app.modules.manuscripts.evaluation_grid_schemas import (
     SaveEvaluationGridRequest,
     EvaluationGridResponse,
-    SubmitEvaluationResponse
+    SubmitEvaluationResponse,
+    ManuscriptEvaluationStatusResponse
 )
 from app.core.logging import get_logger
 
@@ -60,6 +61,57 @@ class EvaluationGridService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Vous devez accepter l'assignation avant de pouvoir évaluer"
             )
+
+    async def _update_manuscript_evaluation_status(self, manuscript_id: int) -> None:
+        """
+        Update manuscript evaluation_status based on submitted evaluations.
+
+        Logic:
+        - PENDING: No evaluators assigned or accepted
+        - IN_PROGRESS: At least 1 evaluator assigned and accepted, but none submitted
+        - PARTIALLY_EVALUATED: Some evaluators submitted, but not all
+        - FULLY_EVALUATED: All assigned evaluators have submitted
+        """
+        # Count assigned and accepted evaluators
+        assigned_query = select(func.count(ManuscriptEvaluatorLink.manuscript_id)).where(
+            ManuscriptEvaluatorLink.manuscript_id == manuscript_id,
+            ManuscriptEvaluatorLink.status == EvaluatorAssignmentStatus.ACCEPTED
+        )
+        assigned_result = await self.db.execute(assigned_query)
+        assigned_count = assigned_result.scalar()
+
+        # Count submitted evaluations
+        submitted_query = select(func.count(ManuscriptEvaluationGrid.id)).where(
+            ManuscriptEvaluationGrid.manuscript_id == manuscript_id,
+            ManuscriptEvaluationGrid.submitted_at.isnot(None)
+        )
+        submitted_result = await self.db.execute(submitted_query)
+        submitted_count = submitted_result.scalar()
+
+        # Get manuscript
+        manuscript = await self.db.get(Manuscript, manuscript_id)
+        if not manuscript:
+            return
+
+        # Determine new status
+        if assigned_count == 0:
+            new_status = ManuscriptEvaluationStatus.PENDING
+        elif submitted_count == 0:
+            new_status = ManuscriptEvaluationStatus.IN_PROGRESS
+        elif submitted_count < assigned_count:
+            new_status = ManuscriptEvaluationStatus.PARTIALLY_EVALUATED
+        elif submitted_count == assigned_count:
+            new_status = ManuscriptEvaluationStatus.FULLY_EVALUATED
+        else:
+            # Should not happen, but fallback
+            new_status = ManuscriptEvaluationStatus.PARTIALLY_EVALUATED
+
+        # Update if changed
+        if manuscript.evaluation_status != new_status:
+            logger.info(f"Updating manuscript {manuscript_id} evaluation status: {manuscript.evaluation_status} -> {new_status}")
+            manuscript.evaluation_status = new_status
+            self.db.add(manuscript)
+            await self.db.commit()
 
     async def get_evaluation_grid(
         self,
@@ -268,6 +320,9 @@ class EvaluationGridService:
         await self.db.commit()
         await self.db.refresh(grid)
 
+        # Update manuscript evaluation status
+        await self._update_manuscript_evaluation_status(manuscript_id)
+
         # Count annotations
         annotations_query = select(ManuscriptAnnotation).where(
             and_(
@@ -299,4 +354,51 @@ class EvaluationGridService:
             submittedAt=grid.submitted_at,
             annotationsCount=len(annotations),
             evaluationGrid=evaluation_grid_dict
+        )
+
+    async def get_manuscript_evaluation_status(
+        self,
+        manuscript_id: int
+    ) -> ManuscriptEvaluationStatusResponse:
+        """
+        Get evaluation status for a manuscript.
+        Returns counts and progress information.
+        """
+        logger.info(f"Getting evaluation status for manuscript {manuscript_id}")
+
+        # Get manuscript
+        manuscript = await self.db.get(Manuscript, manuscript_id)
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Manuscrit non trouvé"
+            )
+
+        # Count assigned and accepted evaluators
+        assigned_query = select(func.count(ManuscriptEvaluatorLink.manuscript_id)).where(
+            ManuscriptEvaluatorLink.manuscript_id == manuscript_id,
+            ManuscriptEvaluatorLink.status == EvaluatorAssignmentStatus.ACCEPTED
+        )
+        assigned_result = await self.db.execute(assigned_query)
+        assigned_count = assigned_result.scalar()
+
+        # Count submitted evaluations
+        submitted_query = select(func.count(ManuscriptEvaluationGrid.id)).where(
+            ManuscriptEvaluationGrid.manuscript_id == manuscript_id,
+            ManuscriptEvaluationGrid.submitted_at.isnot(None)
+        )
+        submitted_result = await self.db.execute(submitted_query)
+        submitted_count = submitted_result.scalar()
+
+        # Calculate progress
+        progress = (submitted_count / assigned_count * 100) if assigned_count > 0 else 0
+        is_fully_evaluated = assigned_count > 0 and submitted_count == assigned_count
+
+        return ManuscriptEvaluationStatusResponse(
+            manuscriptId=manuscript_id,
+            evaluationStatus=manuscript.evaluation_status,
+            assignedEvaluators=assigned_count,
+            submittedEvaluations=submitted_count,
+            isFullyEvaluated=is_fully_evaluated,
+            progress=round(progress, 2)
         )
