@@ -1,6 +1,7 @@
 """
 Main API v1 router
 Aggregates all v1 endpoints
+essaie modification
 """
 from fastapi import APIRouter
 from app.modules.auth import routes as auth
