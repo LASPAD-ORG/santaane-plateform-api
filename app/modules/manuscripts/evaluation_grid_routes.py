@@ -13,7 +13,8 @@ from app.modules.manuscripts.evaluation_grid_service import EvaluationGridServic
 from app.modules.manuscripts.evaluation_grid_schemas import (
     SaveEvaluationGridRequest,
     EvaluationGridResponse,
-    SubmitEvaluationResponse
+    SubmitEvaluationResponse,
+    ManuscriptEvaluationStatusResponse
 )
 
 
@@ -108,4 +109,29 @@ async def submit_evaluation_endpoint(
     return await service.submit_evaluation(
         manuscript_id=manuscript_id,
         evaluator_id=current_user.id
+    )
+
+
+@router.get(
+    "/{manuscript_id}/evaluation-status",
+    response_model=ManuscriptEvaluationStatusResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get manuscript evaluation status",
+    description="Get evaluation progress and status for a manuscript"
+)
+async def get_manuscript_evaluation_status(
+    manuscript_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get the evaluation status for a manuscript.
+
+    - **manuscript_id**: ID of the manuscript
+    - Returns evaluation status, counts, and progress
+    - Available to editors and evaluators
+    """
+    service = EvaluationGridService(db)
+    return await service.get_manuscript_evaluation_status(
+        manuscript_id=manuscript_id
     )

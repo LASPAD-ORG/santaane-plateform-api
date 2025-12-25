@@ -53,6 +53,15 @@ class RecommendationType(str, Enum):
     REJECTED = "rejected"
 
 
+class ManuscriptEvaluationStatus(str, Enum):
+    """Status of manuscript evaluation process"""
+    PENDING = "pending"                          # En attente d'évaluateurs
+    IN_PROGRESS = "in_progress"                 # Au moins 1 évaluateur assigné et accepté
+    PARTIALLY_EVALUATED = "partially_evaluated"  # Certains ont soumis leur évaluation
+    FULLY_EVALUATED = "fully_evaluated"         # Tous les évaluateurs ont soumis
+    DECISION_PENDING = "decision_pending"       # Évaluations complètes, décision éditoriale en attente
+
+
 # ==================== Editor Related Enums ====================
 
 class EditorRole(str, Enum):
