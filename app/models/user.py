@@ -40,6 +40,14 @@ class User(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     )
 
+    otp_code: Optional[str] = Field(default=None, max_length=6)
+    otp_expires_at: Optional[datetime] = Field(default=None)
+    otp_send_count: int = Field(default=0)
+    last_otp_sent_at: Optional[datetime] = Field(default=None)
+    
+    reset_token: Optional[str] = Field(default=None, max_length=255)
+    reset_token_expires_at: Optional[datetime] = Field(default=None)
+
     # Relations
     manuscripts: Mapped[List["Manuscript"]] = Relationship(
         back_populates="author",

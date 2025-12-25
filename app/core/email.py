@@ -86,6 +86,46 @@ class EmailService:
             return False
     
     @classmethod
+    def send_otp_email(cls, to_email: str, otp_code: str) -> bool:
+        """Envoie le code de vérification OTP pour l'inscription"""
+        subject = f"{otp_code} est votre code de vérification - Santaane"
+        
+        body = f"""
+        <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+            <h2>Vérification de votre compte</h2>
+            <p>Merci de vous être inscrit sur Santaane Platform. Utilisez le code ci-dessous pour vérifier votre email :</p>
+            <div style="background: #f4f4f4; padding: 20px; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #4CAF50; margin: 20px 0;">
+                {otp_code}
+            </div>
+            <p>Ce code est confidentiel. Si vous n'avez pas créé de compte, ignorez cet email.</p>
+            <p style="color: #888; font-size: 12px;">Note: Vous pouvez demander jusqu'à 5 codes par jour.</p>
+        </div>
+        """
+        return cls.send_email(to_email, subject, body)
+
+    @classmethod
+    def send_secure_reset_link(cls, to_email: str, full_name: str, reset_token: str) -> bool:
+        """Envoie le lien de réinitialisation avec avertissement d'expiration de 5 min"""
+        subject = "Réinitialisation urgente de votre mot de passe"
+        # Le lien pointe vers votre frontend
+        reset_link = f"http://localhost:3000/reset-password?token={reset_token}"
+        
+        body = f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+            <h2 style="color: #FF9800;">Réinitialisation de mot de passe</h2>
+            <p>Bonjour {full_name},</p>
+            <p>Cliquez sur le bouton ci-dessous pour changer votre mot de passe :</p>
+            <a href="{reset_link}" style="display: inline-block; padding: 12px 25px; background: #FF9800; color: white; text-decoration: none; border-radius: 5px;">
+                Changer mon mot de passe
+            </a>
+            <p style="margin-top: 20px; color: #d9534f; font-weight: bold;">
+                ⚠️ Ce lien expirera dans exactement 5 minutes pour votre sécurité.
+            </p>
+        </div>
+        """
+        return cls.send_email(to_email, subject, body)
+    
+    @classmethod
     def send_welcome_email(cls, to_email: str, full_name: str, password: str, role: str) -> bool:
         """
         Send welcome email with login credentials
