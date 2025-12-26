@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.models.user import User
 from app.models.user_role import UserRole
+from datetime import datetime
 
 
 class AuthRepository:
@@ -37,6 +38,11 @@ class AuthRepository:
         hashed_password: str,
         profile_photo: Optional[str] = None,
         orcid_id: Optional[str] = None,
+        otp_code: Optional[str] = None, # Ajouté pour le support OTP initial
+        otp_expires_at: Optional[datetime] = None,
+        otp_send_count: int = 0,
+        last_otp_sent_at: Optional[datetime] = None,
+        is_active: bool = False
     ) -> User:
         """Create a new user"""
         user = User(
@@ -44,7 +50,12 @@ class AuthRepository:
             full_name=full_name,
             password_hash=hashed_password,
             profile_photo=profile_photo,
-            orcid_id=orcid_id
+            orcid_id=orcid_id,
+            otp_code=otp_code,
+            otp_expires_at=otp_expires_at,
+            otp_send_count=otp_send_count,
+            last_otp_sent_at=last_otp_sent_at,
+            is_active=is_active
         )
         self.db.add(user)
         await self.db.commit()
@@ -76,3 +87,25 @@ class AuthRepository:
         )
         user_roles = result.scalars().all()
         return [ur.role.name for ur in user_roles]
+
+    # --- NOUVELLES MÉTHODES ESSENTIELLES POUR VOS TÂCHES ---
+
+    async def update_user(self, user: User) -> User:
+        """
+        Update user information (activation, password reset, OTP fields)
+        Essential for saving OTP status or new password hashes.
+        """
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    async def get_user_by_reset_token(self, token: str) -> Optional[User]:
+        """
+        Find a user by their password reset token.
+        Used to validate the 5-minute reset link.
+        """
+        result = await self.db.execute(
+            select(User).where(User.reset_token == token)
+        )
+        return result.scalar_one_or_none()
