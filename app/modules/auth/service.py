@@ -186,7 +186,7 @@ class AuthService:
 
     async def set_default_user_role(self, user_id: int):
         """Assign default role to newly registered user"""
-        default_role_id = 3 
+        default_role_id = 4
         await self.repository.assign_default_role_to_user(user_id, default_role_id)
 
     async def get_current_user(self, user_id: int) -> UserResponse:

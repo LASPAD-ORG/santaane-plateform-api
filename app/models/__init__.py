@@ -17,6 +17,7 @@ from app.models.section import Section
 from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 from app.models.manuscript import Manuscript
 from app.models.manuscript_annotation import ManuscriptAnnotation
+from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
 
 
 # Add all new models to this list and to __all__
@@ -35,4 +36,5 @@ __all__ = [
     "ManuscriptEvaluatorLink",
     "Manuscript",
     "ManuscriptAnnotation",
+    "ManuscriptEvaluationGrid",
 ]

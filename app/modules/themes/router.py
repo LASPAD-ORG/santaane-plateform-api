@@ -38,7 +38,7 @@ async def create_theme(
 @router.get(
     "/",
     response_model=List[ThemeResponse],
-    summary="Get all themes"
+    summary="Get active themes (non-expired only)"
 )
 async def get_themes(
     skip: int = 0,
@@ -46,9 +46,60 @@ async def get_themes(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Retrieve all themes with pagination
+    Retrieve only active themes (non-expired) with pagination
+    """
+    themes = await ThemeService.get_active_themes(db, skip, limit)
+    return themes
+
+
+@router.get(
+    "/all",
+    response_model=List[ThemeResponse],
+    summary="Get all themes regardless of date"
+)
+async def get_all_themes(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retrieve all themes (active and expired) with pagination
     """
     themes = await ThemeService.get_all_themes(db, skip, limit)
+    return themes
+
+
+@router.get(
+    "/active",
+    response_model=List[ThemeResponse],
+    summary="Get only active themes"
+)
+async def get_active_themes_only(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retrieve only active themes (non-expired) with pagination
+    """
+    themes = await ThemeService.get_active_themes(db, skip, limit)
+    return themes
+
+
+@router.get(
+    "/expired",
+    response_model=List[ThemeResponse],
+    summary="Get only expired themes"
+)
+async def get_expired_themes(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retrieve only expired themes with pagination
+    """
+    themes = await ThemeService.get_expired_themes(db, skip, limit)
     return themes
 
 
