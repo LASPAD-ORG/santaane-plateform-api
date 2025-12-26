@@ -1,3 +1,177 @@
+# =============================================================================
+# Santaane Platform - Production Docker Compose for Coolify
+# =============================================================================
+# This compose file is optimized for deployment on Coolify.
+#
+# Coolify Configuration:
+# 1. Set your domain in Coolify UI for the 'api' service
+# 2. Configure required environment variables in Coolify UI
+# 3. Coolify will automatically handle networking and proxy configuration
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # API Service - FastAPI Application
+  # ===========================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: santaane-api:latest
+    restart: unless-stopped
+
+    # Environment Variables
+    # Coolify will detect these and show them in the UI for configuration
+    environment:
+      # Database Configuration (required)
+      - DATABASE_URL=${DATABASE_URL:?postgresql+psycopg2://postgres:password@pgbouncer:5432/santaane}
+      - POSTGRES_USER=${POSTGRES_USER:?postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      - POSTGRES_DB=${POSTGRES_DB:?santaane}
+
+      # JWT Configuration (required)
+      - SECRET_KEY=${SECRET_KEY:?}
+      - ALGORITHM=${ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+
+      # Application Configuration
+      - APP_NAME=${APP_NAME:-Santaane API}
+      - APP_VERSION=${APP_VERSION:-1.0.0}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DEBUG=${DEBUG:-False}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # CORS Configuration
+      # In Coolify, set this to your frontend domain
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+
+      # Pagination
+      - DEFAULT_PAGE_SIZE=${DEFAULT_PAGE_SIZE:-20}
+      - MAX_PAGE_SIZE=${MAX_PAGE_SIZE:-100}
+
+    depends_on:
+      db:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    labels:
+      # Coolify labels
+      - coolify.managed=true
+      - coolify.type=application
+
+      # Traefik labels (if using Coolify's proxy)
+      - traefik.enable=true
+      - traefik.http.routers.santaane-api.rule=Host(`${SERVICE_FQDN_API}`)
+      - traefik.http.routers.santaane-api.entryPoints=https
+      - traefik.http.routers.santaane-api.tls=true
+      - traefik.http.routers.santaane-api.tls.certresolver=letsencrypt
+      - traefik.http.services.santaane-api.loadbalancer.server.port=8000
+
+  # ===========================================================================
+  # Database Service - PostgreSQL 16
+  # ===========================================================================
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:?postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      - POSTGRES_DB=${POSTGRES_DB:?santaane}
+      - POSTGRES_HOST_AUTH_METHOD=md5
+      - POSTGRES_INITDB_ARGS=--auth-host=md5
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    command: postgres -c password_encryption=md5
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    labels:
+      - coolify.managed=true
+      - coolify.type=database
+
+    # Exclude from Coolify healthchecks (internal service)
+    exclude_from_hc: true
+
+  # ===========================================================================
+  # PGBouncer - Connection Pooler (Bitnami Image)
+  # ===========================================================================
+  pgbouncer:
+    image: bitnami/pgbouncer:1.25.1
+    restart: unless-stopped
+
+    environment:
+      # PostgreSQL connection
+      - POSTGRESQL_HOST=db
+      - POSTGRESQL_PORT=5432
+      - POSTGRESQL_USERNAME=${POSTGRES_USER:?postgres}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD:?}
+      - POSTGRESQL_DATABASE=${POSTGRES_DB:?santaane}
+
+      # PGBouncer authentication
+      - PGBOUNCER_AUTH_TYPE=md5
+      - PGBOUNCER_DATABASE=${POSTGRES_DB:?santaane}
+
+      # Pool settings
+      - PGBOUNCER_POOL_MODE=transaction
+      - PGBOUNCER_MAX_CLIENT_CONN=100
+      - PGBOUNCER_DEFAULT_POOL_SIZE=20
+      - PGBOUNCER_MIN_POOL_SIZE=10
+      - PGBOUNCER_RESERVE_POOL_SIZE=10
+      - PGBOUNCER_RESERVE_POOL_TIMEOUT=5
+
+      # Ignore startup parameters (important for SQLAlchemy)
+      - PGBOUNCER_IGNORE_STARTUP_PARAMETERS=extra_float_digits
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "6432"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    labels:
+      - coolify.managed=true
+      - coolify.type=service
+
+    # Exclude from Coolify healthchecks (internal service)
+    exclude_from_hc: true
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  pgdata:
+    driver: local
+
+
+
+
+
+
+
+
+
+
+
 # 📋 Exemples d'utilisation de l'API Annotations
 
 ## ✅ Migration effectuée avec succès
