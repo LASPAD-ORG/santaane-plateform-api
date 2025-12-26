@@ -1,0 +1,44 @@
+services:
+  api:
+    build: .
+    container_name: santaane_api
+    env_file: .env  # All environment variables loaded from .env file
+    volumes:
+      # Mount source code for hot-reload
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    depends_on:
+      - db
+      - pgbouncer
+    # Pass --reload flag to uvicorn via entrypoint
+    command: ["--reload"]
+
+  db:
+    image: postgres:16
+    container_name: santaane_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-santaane}
+      POSTGRES_HOST_AUTH_METHOD: md5
+      POSTGRES_INITDB_ARGS: "--auth-host=md5"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command: postgres -c password_encryption=md5
+
+  pgbouncer:
+    image: edoburu/pgbouncer
+    container_name: santaane_pgbouncer
+    environment:
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB:-santaane}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
