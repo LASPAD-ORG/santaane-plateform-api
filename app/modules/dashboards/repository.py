@@ -100,7 +100,7 @@ class DashboardRepository:
         logger.info(f"Fetching weekly submissions for author_id={author_id}, last {weeks} weeks")
 
         # Calculate start date (N weeks ago)
-        start_date = datetime.now(timezone.utc) - timedelta(weeks=weeks)
+        start_date = datetime.utcnow() - timedelta(weeks=weeks)
 
         # PostgreSQL-specific: extract year and week
         query = select(
@@ -135,7 +135,7 @@ class DashboardRepository:
         logger.info(f"Fetching monthly submissions for author_id={author_id}, last {months} months")
 
         # Calculate start date (N months ago)
-        start_date = datetime.now(timezone.utc) - timedelta(days=months * 30)
+        start_date = datetime.utcnow() - timedelta(days=months * 30)
 
         # PostgreSQL-specific: date_trunc to month
         query = select(
@@ -170,7 +170,7 @@ class DashboardRepository:
         logger.info(f"Fetching yearly submissions for author_id={author_id}, last {years} years")
 
         # Calculate start date (N years ago)
-        start_date = datetime.now(timezone.utc) - timedelta(days=years * 365)
+        start_date = datetime.utcnow() - timedelta(days=years * 365)
 
         # PostgreSQL-specific: extract year
         query = select(
@@ -410,7 +410,7 @@ class DashboardRepository:
         """
         logger.info(f"Fetching system-wide weekly submissions, last {weeks} weeks")
 
-        start_date = datetime.now(timezone.utc) - timedelta(weeks=weeks)
+        start_date = datetime.utcnow() - timedelta(weeks=weeks)
 
         query = select(
             func.date_trunc('week', Manuscript.created_at).label('week_start'),
@@ -438,7 +438,7 @@ class DashboardRepository:
         """
         logger.info(f"Fetching system-wide monthly submissions, last {months} months")
 
-        start_date = datetime.now(timezone.utc) - timedelta(days=months * 30)
+        start_date = datetime.utcnow() - timedelta(days=months * 30)
 
         query = select(
             func.date_trunc('month', Manuscript.created_at).label('month_start'),
@@ -466,7 +466,7 @@ class DashboardRepository:
         """
         logger.info(f"Fetching system-wide yearly submissions, last {years} years")
 
-        start_date = datetime.now(timezone.utc) - timedelta(days=years * 365)
+        start_date = datetime.utcnow() - timedelta(days=years * 365)
 
         query = select(
             func.date_trunc('year', Manuscript.created_at).label('year_start'),
@@ -496,7 +496,7 @@ class DashboardRepository:
 
         logger.info(f"Fetching new authors by week, last {weeks} weeks")
 
-        start_date = datetime.now(timezone.utc) - timedelta(weeks=weeks)
+        start_date = datetime.utcnow() - timedelta(weeks=weeks)
 
         # Get earliest submission date for each author who joined in the period
         query = select(
@@ -527,7 +527,7 @@ class DashboardRepository:
         """
         logger.info(f"Fetching new authors by month, last {months} months")
 
-        start_date = datetime.now(timezone.utc) - timedelta(days=months * 30)
+        start_date = datetime.utcnow() - timedelta(days=months * 30)
 
         query = select(
             func.date_trunc('month', func.min(Manuscript.created_at)).label('month_start'),
@@ -557,7 +557,7 @@ class DashboardRepository:
         """
         logger.info(f"Fetching new authors by year, last {years} years")
 
-        start_date = datetime.now(timezone.utc) - timedelta(days=years * 365)
+        start_date = datetime.utcnow() - timedelta(days=years * 365)
 
         query = select(
             func.date_trunc('year', func.min(Manuscript.created_at)).label('year_start'),
@@ -659,7 +659,7 @@ class DashboardRepository:
 
         logger.info(f"Fetching weekly evaluations for evaluator_id={evaluator_id}, last {weeks} weeks")
 
-        start_date = datetime.now(timezone.utc) - timedelta(weeks=weeks)
+        start_date = datetime.utcnow() - timedelta(weeks=weeks)
 
         # Count evaluations submitted per week
         query = select(
@@ -695,7 +695,7 @@ class DashboardRepository:
 
         logger.info(f"Fetching monthly evaluations for evaluator_id={evaluator_id}, last {months} months")
 
-        start_date = datetime.now(timezone.utc) - timedelta(days=months * 30)
+        start_date = datetime.utcnow() - timedelta(days=months * 30)
 
         # Count evaluations submitted per month
         query = select(
@@ -731,7 +731,7 @@ class DashboardRepository:
 
         logger.info(f"Fetching yearly evaluations for evaluator_id={evaluator_id}, last {years} years")
 
-        start_date = datetime.now(timezone.utc) - timedelta(days=years * 365)
+        start_date = datetime.utcnow() - timedelta(days=years * 365)
 
         # Count evaluations submitted per year
         query = select(
