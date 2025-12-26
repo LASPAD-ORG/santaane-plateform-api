@@ -211,6 +211,89 @@ def require_all_roles(*roles: UserRole) -> Callable:
     return check_all_roles
 
 
+def require_editor_or_manuscript_author(manuscript_id: int) -> Callable:
+    """
+    Dependency to require EDITOR role OR manuscript ownership (AUTHOR).
+
+    Usage:
+        @router.get("/{manuscript_id}/evaluations")
+        async def get_evaluations(
+            manuscript_id: int,
+            current_user: User = Depends(require_editor_or_manuscript_author(manuscript_id))
+        ):
+            ...
+
+    Args:
+        manuscript_id: ID of the manuscript to check ownership
+
+    Returns:
+        FastAPI dependency function
+
+    Raises:
+        HTTPException 403: If user is neither EDITOR nor manuscript owner
+        HTTPException 401: If user account is inactive
+        HTTPException 404: If manuscript not found
+    """
+    async def check_editor_or_owner(
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+    ) -> User:
+        # Check if account is active
+        if not current_user.is_active:
+            logger.warning(f"Inactive account attempted access: {current_user.email}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=AuthErrorCode.ACCOUNT_INACTIVE
+            )
+
+        # Get user roles
+        repository = AuthRepository(db)
+        user_roles = await repository.get_user_roles(current_user.id)
+
+        # SUPER_ADMIN has automatic access
+        if UserRole.SUPER_ADMIN.value in user_roles:
+            logger.info(f"SUPER_ADMIN access granted: {current_user.email}")
+            return current_user
+
+        # EDITOR has automatic access
+        if UserRole.EDITOR.value in user_roles:
+            logger.info(f"EDITOR access granted: {current_user.email}")
+            return current_user
+
+        # Check if user is AUTHOR and owns the manuscript
+        if UserRole.AUTHOR.value in user_roles:
+            from app.models.manuscript import Manuscript
+            from sqlmodel import select
+
+            # Query manuscript to check ownership
+            query = select(Manuscript).where(Manuscript.id == manuscript_id)
+            result = await db.execute(query)
+            manuscript = result.scalar_one_or_none()
+
+            if not manuscript:
+                logger.warning(f"Manuscript {manuscript_id} not found")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Manuscript not found"
+                )
+
+            if manuscript.author_id == current_user.id:
+                logger.info(f"AUTHOR access granted (owns manuscript {manuscript_id}): {current_user.email}")
+                return current_user
+
+        # User is neither EDITOR nor manuscript owner
+        logger.warning(
+            f"Insufficient permissions: {current_user.email} "
+            f"(has: {user_roles}, needs: EDITOR or manuscript ownership)"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=AuthErrorCode.INSUFFICIENT_PERMISSIONS
+        )
+
+    return check_editor_or_owner
+
+
 # Convenience aliases for common role checks
 require_super_admin = require_role(UserRole.SUPER_ADMIN)
 require_editor = require_role(UserRole.EDITOR)

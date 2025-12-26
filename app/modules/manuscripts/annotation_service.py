@@ -158,6 +158,52 @@ class AnnotationService:
             for ann in annotations
         ]
 
+    async def get_annotations_by_evaluator(
+        self,
+        manuscript_id: int,
+        evaluator_id: int
+    ) -> List[AnnotationResponse]:
+        """
+        Get all annotations for a manuscript by a specific evaluator.
+        This method is for editors to view evaluator annotations.
+        Does NOT require evaluator assignment verification.
+        """
+        logger.info(f"Fetching annotations for manuscript {manuscript_id} by evaluator {evaluator_id} (editor access)")
+
+        # Get annotations - EXCLUDE REDACTION type
+        query = (
+            select(ManuscriptAnnotation)
+            .where(
+                ManuscriptAnnotation.manuscript_id == manuscript_id,
+                ManuscriptAnnotation.evaluator_id == evaluator_id,
+                ManuscriptAnnotation.annotation_type != "redaction"  # CRITICAL: Never expose redactions
+            )
+            .options(selectinload(ManuscriptAnnotation.evaluator))
+            .order_by(ManuscriptAnnotation.page_number, ManuscriptAnnotation.created_at)
+        )
+
+        result = await self.db.execute(query)
+        annotations = result.scalars().all()
+
+        return [
+            AnnotationResponse(
+                id=ann.id,
+                manuscriptId=ann.manuscript_id,
+                evaluatorId=ann.evaluator_id,
+                evaluatorName=ann.evaluator.full_name,
+                annotationType=ann.annotation_type,
+                pageNumber=ann.page_number,
+                xPosition=ann.x_position,
+                yPosition=ann.y_position,
+                positionData=ann.position_data,
+                comment=ann.comment,
+                contentData=ann.content_data,
+                createdAt=ann.created_at,
+                updatedAt=ann.updated_at
+            )
+            for ann in annotations
+        ]
+
     async def update_annotation(
         self,
         annotation_id: str,

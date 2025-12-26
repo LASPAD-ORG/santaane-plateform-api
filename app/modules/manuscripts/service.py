@@ -31,6 +31,29 @@ class ManuscriptService:
     def __init__(self, repository: ManuscriptRepository):
         self.repository = repository
 
+    async def _get_evaluator_evaluation_status(self, manuscript_id: int, evaluator_id: int) -> str:
+        """
+        Récupère le statut d'évaluation individuel d'un évaluateur pour un manuscrit
+        Retourne: 'not_started', 'in_progress', ou 'completed'
+        """
+        from sqlmodel import select
+        from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
+        
+        # Vérifier s'il y a une grille d'évaluation pour cet évaluateur
+        query = select(ManuscriptEvaluationGrid).where(
+            ManuscriptEvaluationGrid.manuscript_id == manuscript_id,
+            ManuscriptEvaluationGrid.evaluator_id == evaluator_id
+        )
+        result = await self.repository.session.execute(query)
+        evaluation_grid = result.scalar_one_or_none()
+        
+        if not evaluation_grid:
+            return "not_started"
+        elif evaluation_grid.submitted_at is None:
+            return "in_progress"
+        else:
+            return "completed"
+
     async def submit_manuscript(
         self, 
         manuscript_data: ManuscriptSubmit, 
@@ -101,12 +124,18 @@ class ManuscriptService:
         )
 
     async def get_my_manuscripts(
-        self, 
+        self,
         author_id: int,
         skip: int = 0,
         limit: int = 100
     ) -> ManuscriptListResponse:
         """Get all manuscripts for the current author"""
+        from sqlmodel import select
+        from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
+        from app.models.user import User
+        from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
+        from app.modules.manuscripts.schemas import EvaluatorAssignment
+
         logger.info(f"Fetching manuscripts for user {author_id}")
 
         manuscripts = await self.repository.get_manuscripts_by_author(
@@ -122,6 +151,40 @@ class ManuscriptService:
             section = await self.repository.get_section_by_id(manuscript.section_id)
             language = await self.repository.get_language_by_id(manuscript.language_id)
 
+            # Load evaluator assignments for this manuscript
+            evaluator_assignments = []
+            stmt = (
+                select(ManuscriptEvaluatorLink, User)
+                .join(User, ManuscriptEvaluatorLink.evaluator_id == User.id)
+                .where(ManuscriptEvaluatorLink.manuscript_id == manuscript.id)
+            )
+            result = await self.repository.session.execute(stmt)
+            links = result.all()
+
+            for link, evaluator in links:
+                # Check if evaluation grid is submitted
+                grid_stmt = select(ManuscriptEvaluationGrid).where(
+                    ManuscriptEvaluationGrid.manuscript_id == manuscript.id,
+                    ManuscriptEvaluationGrid.evaluator_id == link.evaluator_id
+                )
+                grid_result = await self.repository.session.execute(grid_stmt)
+                grid = grid_result.scalar_one_or_none()
+
+                evaluation_status = "completed" if (grid and grid.submitted_at) else "in_progress" if grid else "not_started"
+
+                evaluator_assignments.append(
+                    EvaluatorAssignment(
+                        evaluatorId=link.evaluator_id,
+                        evaluatorName=evaluator.full_name or evaluator.email,
+                        evaluatorEmail=evaluator.email,
+                        status=link.status,
+                        assignedAt=link.assigned_at,
+                        responseAt=link.response_at,
+                        evaluationDeadline=link.evaluation_deadline,
+                        evaluationStatus=evaluation_status
+                    )
+                )
+
             manuscript_responses.append(
                 ManuscriptResponse(
                     id=manuscript.id,
@@ -133,6 +196,7 @@ class ManuscriptService:
                     languageName=language.name if language else "",
                     status=manuscript.status,
                     pdfFilename=manuscript.pdf_filename,
+                    evaluators=evaluator_assignments,
                     createdAt=manuscript.created_at,
                     updatedAt=manuscript.updated_at
                 )
@@ -177,6 +241,9 @@ class ManuscriptService:
             evaluators = await self.repository.get_manuscript_evaluators(manuscript.id)
             evaluator_assignments = []
             for link in evaluators:
+                # Récupérer le statut d'évaluation individuel de l'évaluateur
+                evaluation_status = await self._get_evaluator_evaluation_status(manuscript.id, link.evaluator_id)
+                
                 evaluator_assignments.append(
                     EvaluatorAssignment(
                         evaluatorId=link.evaluator_id,
@@ -185,7 +252,8 @@ class ManuscriptService:
                         status=link.status,
                         assignedAt=link.assigned_at,
                         responseAt=link.response_at,
-                        evaluationDeadline=link.evaluation_deadline
+                        evaluationDeadline=link.evaluation_deadline,
+                        evaluationStatus=evaluation_status  # Nouveau champ
                     )
                 )
 

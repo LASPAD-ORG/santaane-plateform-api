@@ -168,3 +168,37 @@ async def get_redaction_masks(
         manuscript_id=manuscript_id,
         evaluator_id=current_user.id
     )
+
+
+@router.get(
+    "/{manuscript_id}/evaluator/{evaluator_id}/annotations",
+    response_model=List[AnnotationResponse],
+    summary="Get annotations by evaluator (Editor or Author)",
+    description="Retrieve all annotations for a manuscript by a specific evaluator (for editor consultation or author viewing)"
+)
+async def get_annotations_by_evaluator(
+    manuscript_id: int,
+    evaluator_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get annotations for a manuscript by a specific evaluator.
+    Accessible by:
+    - EDITOR: Can view any manuscript's evaluations
+    - AUTHOR: Can view evaluations of their own manuscripts only
+
+    **Requires:** EDITOR role OR manuscript ownership (AUTHOR)
+
+    **Returns:** All annotations with comments for the specified evaluator
+    """
+    from app.core.permissions import require_editor_or_manuscript_author
+
+    # Check permissions (EDITOR or manuscript owner)
+    await require_editor_or_manuscript_author(manuscript_id)(current_user, db)
+
+    service = AnnotationService(db)
+    return await service.get_annotations_by_evaluator(
+        manuscript_id=manuscript_id,
+        evaluator_id=evaluator_id
+    )

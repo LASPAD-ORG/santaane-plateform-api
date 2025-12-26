@@ -135,3 +135,42 @@ async def get_manuscript_evaluation_status(
     return await service.get_manuscript_evaluation_status(
         manuscript_id=manuscript_id
     )
+
+
+@router.get(
+    "/{manuscript_id}/evaluator/{evaluator_id}/evaluation-grid",
+    response_model=EvaluationGridResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get evaluation grid by evaluator (Editor or Author)",
+    description="Retrieve the evaluation grid for a manuscript by a specific evaluator (for editor consultation or author viewing)"
+)
+async def get_evaluation_grid_by_evaluator_endpoint(
+    manuscript_id: int,
+    evaluator_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get the evaluation grid for a manuscript by a specific evaluator.
+    Accessible by:
+    - EDITOR: Can view any manuscript's evaluations
+    - AUTHOR: Can view evaluations of their own manuscripts only
+
+    **Requires:** EDITOR role OR manuscript ownership (AUTHOR)
+
+    - **manuscript_id**: ID of the manuscript
+    - **evaluator_id**: ID of the evaluator
+    - Returns the evaluation grid with article title and evaluator name
+    - Returns 404 if grid not found
+    - Returns 403 if not an editor or manuscript owner
+    """
+    from app.core.permissions import require_editor_or_manuscript_author
+
+    # Check permissions (EDITOR or manuscript owner)
+    await require_editor_or_manuscript_author(manuscript_id)(current_user, db)
+
+    service = EvaluationGridService(db)
+    return await service.get_evaluation_grid(
+        manuscript_id=manuscript_id,
+        evaluator_id=evaluator_id
+    )

@@ -75,6 +75,7 @@ class EvaluatorAssignment(BaseModel):
     assignedAt: datetime
     responseAt: Optional[datetime] = None
     evaluationDeadline: Optional[datetime] = None
+    evaluationStatus: str  # 'not_started', 'in_progress', 'completed'
 
 
 class ManuscriptResponse(BaseModel):
