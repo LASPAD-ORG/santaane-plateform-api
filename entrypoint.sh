@@ -2,6 +2,7 @@
 set -e
 
 echo "🚀 Starting Santaane API..."
+echo "Environment: ${ENVIRONMENT:-production}"
 
 # Wait for PostgreSQL to be ready
 echo "⏳ Waiting for PostgreSQL to be ready..."
@@ -30,8 +31,10 @@ sleep 3
 echo "✅ PGBouncer should be ready!"
 
 # Run Alembic migrations
+# Note: In production, packages are installed globally (poetry config virtualenvs.create false)
+# so we can use alembic directly without 'poetry run'
 echo "📦 Running database migrations..."
-poetry run alembic upgrade head
+alembic upgrade head
 
 if [ $? -eq 0 ]; then
   echo "✅ Migrations completed successfully!"
@@ -42,4 +45,11 @@ fi
 
 # Start the application
 echo "🎯 Starting FastAPI application..."
-exec poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 "$@"
+
+# Production settings: no reload, optimized workers
+exec uvicorn app.main:app \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --workers 4 \
+  --log-level ${LOG_LEVEL:-info} \
+  "$@"
