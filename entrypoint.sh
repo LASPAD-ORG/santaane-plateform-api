@@ -1,49 +1,26 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting Santaane API..."
-echo "Environment: ${ENVIRONMENT:-production}"
+echo "🚀 Starting Santaane API (PROD)"
 
-# Wait for PostgreSQL to be ready
-echo "⏳ Waiting for PostgreSQL to be ready..."
-max_retries=30
-counter=0
-
-echo "Checking connection to db:5432..."
-
-until pg_isready -h db -p 5432 -U "$POSTGRES_USER" 2>/dev/null || [ $counter -eq $max_retries ]; do
-  counter=$((counter+1))
-  echo "PostgreSQL is unavailable - attempt $counter/$max_retries"
+# 1️⃣ Wait for PostgreSQL
+echo "⏳ Waiting for PostgreSQL..."
+until pg_isready -h db -p 5432 -U "$POSTGRES_USER" >/dev/null 2>&1; do
   sleep 2
 done
-
-if [ $counter -eq $max_retries ]; then
-  echo "❌ Failed to connect to PostgreSQL after $max_retries attempts"
-  exit 1
-fi
-
 echo "✅ PostgreSQL is ready!"
 
-# Run Alembic migrations
-# Note: In production, packages are installed globally (poetry config virtualenvs.create false)
-# so we can use alembic directly without 'poetry run'
-echo "📦 Running database migrations..."
-alembic upgrade head
-
-if [ $? -eq 0 ]; then
-  echo "✅ Migrations completed successfully!"
-else
-  echo "❌ Migration failed!"
-  exit 1
+# 2️⃣ Run migrations ONLY if explicitly enabled
+if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
+  echo "📦 Running database migrations..."
+  alembic upgrade head
+  echo "✅ Migrations done"
 fi
 
-# Start the application
-echo "🎯 Starting FastAPI application..."
-
-# Production settings: no reload, optimized workers
+# 3️⃣ Start FastAPI
+echo "🎯 Starting FastAPI application"
 exec uvicorn app.main:app \
   --host 0.0.0.0 \
   --port 8000 \
-  --workers 4 \
-  --log-level ${LOG_LEVEL:-info} \
-  "$@"
+  --workers ${UVICORN_WORKERS:-4} \
+  --log-level ${LOG_LEVEL:-info}
