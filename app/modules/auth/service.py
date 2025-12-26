@@ -89,6 +89,9 @@ class AuthService:
         user.otp_code = None
         await self.repository.update_user(user)
         
+        # Envoyer l'email de bienvenue après activation
+        EmailService.send_account_activated_email(user.email, user.full_name)
+        
         logger.info(f"User {email} verified and activated via OTP")
         return True
 

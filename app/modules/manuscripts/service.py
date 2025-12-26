@@ -21,6 +21,7 @@ from app.modules.manuscripts.error_codes import ManuscriptErrorCode
 from app.models.manuscript import Manuscript
 from app.models.enums import ManuscriptStatus
 from app.core.logging import get_logger
+from app.core.email import EmailService
 
 logger = get_logger(__name__)
 
@@ -108,6 +109,32 @@ class ManuscriptService:
 
         # Fetch related data for response
         theme = await self.repository.get_theme_by_id(created_manuscript.theme_id) if created_manuscript.theme_id else None
+        
+        # Récupérer les informations de l'auteur pour l'email
+        author = await self.repository.get_user_by_id(author_id)
+        
+        # Envoyer notification au système
+        EmailService.send_new_submission_notification(
+            manuscript_id=created_manuscript.id,
+            manuscript_title=created_manuscript.title,
+            author_name=author.full_name if author else "Auteur inconnu",
+            author_email=author.email if author else "",
+            section_name=section.name,
+            theme_name=theme.title if theme else None
+        )
+        
+        # Envoyer confirmation à l'auteur
+        try:
+            if author and author.email:
+                EmailService.send_submission_confirmation_email(
+                    to_email=author.email,
+                    author_name=author.full_name,
+                    manuscript_title=created_manuscript.title,
+                    manuscript_id=created_manuscript.id
+                )
+                logger.info(f"Submission confirmation email sent to {author.email}")
+        except Exception as e:
+            logger.error(f"Failed to send submission confirmation email: {str(e)}")
         
         return ManuscriptResponse(
             id=created_manuscript.id,
@@ -456,6 +483,26 @@ class ManuscriptService:
         updated_manuscript = await self.repository.update_manuscript(manuscript)
         logger.info(f"Manuscript {manuscript_id} revised and re-submitted by user {current_user_id}")
 
+        # Send notification email to system about re-submission
+        try:
+            author = manuscript.author
+            author_name = f"{author.first_name} {author.last_name}" if author else "Auteur"
+            author_email = author.email if author else ""
+            
+            # Calculate revision number (count of times manuscript was revised)
+            revision_number = 1  # Default to 1 for first revision
+            
+            EmailService.send_manuscript_resubmitted_notification(
+                manuscript_id=manuscript_id,
+                manuscript_title=manuscript.title,
+                author_name=author_name,
+                author_email=author_email,
+                revision_number=revision_number
+            )
+            logger.info(f"Re-submission notification sent for manuscript {manuscript_id}")
+        except Exception as e:
+            logger.error(f"Failed to send re-submission notification: {str(e)}")
+
         # Fetch related data for response
         theme = await self.repository.get_theme_by_id(updated_manuscript.theme_id) if updated_manuscript.theme_id else None
         section = await self.repository.get_section_by_id(updated_manuscript.section_id)
@@ -578,6 +625,53 @@ class ManuscriptService:
 
         await self.repository.update_manuscript(manuscript)
         logger.info(f"Manuscript {manuscript_id} status changed to {status_data.status}")
+
+        # Send email notification to author based on status
+        try:
+            author = manuscript.author
+            author_name = f"{author.first_name} {author.last_name}"
+            author_email = author.email
+            
+            if status_data.status == ManuscriptStatus.ACCEPTED:
+                EmailService.send_manuscript_accepted_email(
+                    to_email=author_email,
+                    author_name=author_name,
+                    manuscript_title=manuscript.title,
+                    manuscript_id=manuscript_id
+                )
+                logger.info(f"Acceptance email sent to {author_email}")
+                
+            elif status_data.status == ManuscriptStatus.REJECTED:
+                EmailService.send_manuscript_rejected_email(
+                    to_email=author_email,
+                    author_name=author_name,
+                    manuscript_title=manuscript.title,
+                    manuscript_id=manuscript_id,
+                    rejection_reason=status_data.comment if hasattr(status_data, 'comment') else None
+                )
+                logger.info(f"Rejection email sent to {author_email}")
+                
+            elif status_data.status == ManuscriptStatus.PUBLISHED:
+                EmailService.send_manuscript_published_email(
+                    to_email=author_email,
+                    author_name=author_name,
+                    manuscript_title=manuscript.title,
+                    manuscript_id=manuscript_id
+                )
+                logger.info(f"Publication email sent to {author_email}")
+                
+            elif status_data.status == ManuscriptStatus.REVISION_REQUESTED:
+                EmailService.send_revision_requested_email(
+                    to_email=author_email,
+                    author_name=author_name,
+                    manuscript_title=manuscript.title,
+                    manuscript_id=manuscript_id,
+                    revision_comments=status_data.comment if hasattr(status_data, 'comment') else None
+                )
+                logger.info(f"Revision request email sent to {author_email}")
+                
+        except Exception as e:
+            logger.error(f"Failed to send status change email: {str(e)}")
 
         # Return detailed response
         return await self.get_manuscript_detail_for_staff(manuscript_id)

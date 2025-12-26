@@ -149,11 +149,35 @@ class EvaluatorAssignmentService:
                 detail=f"Assignment already {assignment.status.value}"
             )
         
+        # Get manuscript and evaluator details for email notification
+        manuscript_result = await self.db.execute(
+            select(Manuscript).where(Manuscript.id == manuscript_id)
+        )
+        manuscript = manuscript_result.scalar_one_or_none()
+        
+        evaluator_result = await self.db.execute(
+            select(User).where(User.id == evaluator_id)
+        )
+        evaluator = evaluator_result.scalar_one_or_none()
+        
         if accept:
             # Accept assignment
             assignment.status = EvaluatorAssignmentStatus.ACCEPTED
             assignment.response_at = datetime.now(timezone.utc).replace(tzinfo=None)
             await self.db.commit()
+            
+            # Send notification to system
+            try:
+                EmailService.send_evaluator_response_notification(
+                    manuscript_id=manuscript_id,
+                    manuscript_title=manuscript.title if manuscript else f"Manuscrit #{manuscript_id}",
+                    evaluator_name=evaluator.full_name if evaluator else "Évaluateur",
+                    evaluator_email=evaluator.email if evaluator else "",
+                    response="accepted"
+                )
+                logger.info(f"Evaluator acceptance notification sent for manuscript {manuscript_id}")
+            except Exception as e:
+                logger.error(f"Failed to send evaluator acceptance notification: {str(e)}")
             
             return {
                 "message": "Assignment accepted successfully",
@@ -163,6 +187,19 @@ class EvaluatorAssignmentService:
             # Decline and delete assignment
             await self.db.delete(assignment)
             await self.db.commit()
+            
+            # Send notification to system
+            try:
+                EmailService.send_evaluator_response_notification(
+                    manuscript_id=manuscript_id,
+                    manuscript_title=manuscript.title if manuscript else f"Manuscrit #{manuscript_id}",
+                    evaluator_name=evaluator.full_name if evaluator else "Évaluateur",
+                    evaluator_email=evaluator.email if evaluator else "",
+                    response="declined"
+                )
+                logger.info(f"Evaluator decline notification sent for manuscript {manuscript_id}")
+            except Exception as e:
+                logger.error(f"Failed to send evaluator decline notification: {str(e)}")
             
             return {
                 "message": "Assignment declined and removed",

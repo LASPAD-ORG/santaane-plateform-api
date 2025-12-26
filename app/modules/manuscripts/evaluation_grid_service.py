@@ -22,6 +22,7 @@ from app.modules.manuscripts.evaluation_grid_schemas import (
     ManuscriptEvaluationStatusResponse
 )
 from app.core.logging import get_logger
+from app.core.email import EmailService
 
 logger = get_logger(__name__)
 
@@ -322,6 +323,28 @@ class EvaluationGridService:
 
         # Update manuscript evaluation status
         await self._update_manuscript_evaluation_status(manuscript_id)
+
+        # Get manuscript and evaluator details for email notification
+        manuscript_query = select(Manuscript).where(Manuscript.id == manuscript_id)
+        manuscript_result = await self.db.execute(manuscript_query)
+        manuscript = manuscript_result.scalar_one_or_none()
+        
+        evaluator_query = select(User).where(User.id == evaluator_id)
+        evaluator_result = await self.db.execute(evaluator_query)
+        evaluator = evaluator_result.scalar_one_or_none()
+        
+        # Send notification to system
+        try:
+            EmailService.send_evaluation_submitted_notification(
+                manuscript_id=manuscript_id,
+                manuscript_title=manuscript.title if manuscript else f"Manuscrit #{manuscript_id}",
+                evaluator_name=evaluator.full_name if evaluator else "Évaluateur",
+                evaluator_email=evaluator.email if evaluator else "",
+                evaluation_decision=grid.recommendation or "Non spécifié"
+            )
+            logger.info(f"Evaluation submitted notification sent for manuscript {manuscript_id}")
+        except Exception as e:
+            logger.error(f"Failed to send evaluation submitted notification: {str(e)}")
 
         # Count annotations
         annotations_query = select(ManuscriptAnnotation).where(

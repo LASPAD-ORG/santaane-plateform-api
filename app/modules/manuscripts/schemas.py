@@ -44,6 +44,7 @@ class ManuscriptUpdate(BaseModel):
 class ManuscriptStatusUpdate(BaseModel):
     """Schema for updating manuscript status"""
     status: ManuscriptStatus = Field(..., description="New status (REVISION_REQUESTED, ACCEPTED, REJECTED, or PUBLISHED)")
+    comment: Optional[str] = Field(None, description="Optional comment or reason for the status change (used for rejection reason or revision comments)")
 
     def validate_allowed_status(self) -> bool:
         """Check if status is one of the allowed values"""
