@@ -1,6 +1,7 @@
 """
 Main API v1 router
 Aggregates all v1 endpoints
+essaie modification
 """
 from fastapi import APIRouter
 from app.modules.auth import routes as auth
@@ -15,7 +16,7 @@ from app.modules.manuscripts import redaction_routes
 from app.modules.themes import router as themes_router
 from app.modules.languages import router as languages_router
 from app.modules.sections import router as sections_router
-
+from app.modules.dashboards import router as dashboards_router
 # Create main v1 router
 router = APIRouter(prefix="/api/v1")
 
@@ -33,3 +34,4 @@ router.include_router(redaction_routes.router)
 router.include_router(themes_router)
 router.include_router(languages_router)
 router.include_router(sections_router)
+router.include_router(dashboards_router)
