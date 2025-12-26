@@ -12,7 +12,6 @@ services:
       - ./alembic.ini:/app/alembic.ini
     depends_on:
       - db
-      - pgbouncer
     # Pass --reload flag to uvicorn via entrypoint
     command: ["--reload"]
 
@@ -30,21 +29,6 @@ services:
     ports:
       - "5432:5432"
     command: postgres -c password_encryption=md5
-
-  pgbouncer:
-    image: edoburu/pgbouncer
-    container_name: santaane_pgbouncer
-    environment:
-      DB_USER: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      DB_HOST: db
-      DB_NAME: ${POSTGRES_DB:-santaane}
-      POOL_MODE: transaction
-      MAX_CLIENT_CONN: 100
-    depends_on:
-      - db
-    ports:
-      - "6432:6432"
 
 volumes:
   pgdata:

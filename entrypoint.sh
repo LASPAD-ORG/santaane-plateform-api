@@ -9,7 +9,6 @@ echo "⏳ Waiting for PostgreSQL to be ready..."
 max_retries=30
 counter=0
 
-# Check PostgreSQL directly (not through PGBouncer)
 echo "Checking connection to db:5432..."
 
 until pg_isready -h db -p 5432 -U "$POSTGRES_USER" 2>/dev/null || [ $counter -eq $max_retries ]; do
@@ -24,11 +23,6 @@ if [ $counter -eq $max_retries ]; then
 fi
 
 echo "✅ PostgreSQL is ready!"
-
-# Wait a bit more for PGBouncer to be ready
-echo "⏳ Waiting for PGBouncer to be ready..."
-sleep 3
-echo "✅ PGBouncer should be ready!"
 
 # Run Alembic migrations
 # Note: In production, packages are installed globally (poetry config virtualenvs.create false)
