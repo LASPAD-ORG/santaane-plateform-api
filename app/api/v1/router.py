@@ -17,6 +17,8 @@ from app.modules.themes import router as themes_router
 from app.modules.languages import router as languages_router
 from app.modules.sections import router as sections_router
 from app.modules.dashboards import router as dashboards_router
+from app.modules.public import routes as public_routes
+
 # Create main v1 router
 router = APIRouter(prefix="/api/v1")
 
@@ -35,3 +37,4 @@ router.include_router(themes_router)
 router.include_router(languages_router)
 router.include_router(sections_router)
 router.include_router(dashboards_router)
+router.include_router(public_routes.router)
