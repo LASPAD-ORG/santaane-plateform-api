@@ -73,7 +73,7 @@ CORS_ORIGINS=https://votre-frontend.com
 # Application
 ENVIRONMENT=production
 DEBUG=False
-LOG_LEVEL=INFO
+LOG_LEVEL=info
 ```
 
 ### Étape 4: Configurer le Domaine
