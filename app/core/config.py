@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     ENVIRONMENT: str = "development"
 
+    PLATFORM_URL: str = "http://localhost:3000" 
+    
     # Database
     DATABASE_URL: str
 

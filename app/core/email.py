@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
 from app.core.logging import get_logger
-
+from app.core.config import Settings
 logger = get_logger(__name__)
 
 
@@ -20,7 +20,7 @@ class EmailService:
     SMTP_PASSWORD = "laspad-plateform"
     FROM_EMAIL = "laspad-plateform@hamadouba.com"
     FROM_NAME = "Santaane Platform"
-    PLATFORM_URL = "http://localhost:3000"
+    PLATFORM_URL = Settings.PLATFORM_URL
     PRIMARY_COLOR = "#59a498"
     PRIMARY_COLOR_DARK = "#4a8a7f"
     
