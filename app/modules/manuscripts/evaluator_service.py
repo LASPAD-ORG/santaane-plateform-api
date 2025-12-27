@@ -89,10 +89,10 @@ class EvaluatorAssignmentService:
         await self.db.refresh(assignment)
         
         # Generate PDF URL (using uploads directory path)
-        pdf_url = f"http://localhost:3000/uploads/{manuscript.pdf_filename}"
+        pdf_url = f"https://santaane.mansatoulo.fr/uploads/{manuscript.pdf_filename}"
         
-        # Format deadline for email
-        deadline_str = evaluation_deadline.strftime("%d %B %Y")
+        # Format deadline for email (French format: jj/mm/aaaa)
+        deadline_str = evaluation_deadline.strftime("%d/%m/%Y")
         
         # Send evaluation request email
         email_sent = EmailService.send_evaluation_request_email(
