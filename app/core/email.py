@@ -20,7 +20,7 @@ class EmailService:
     SMTP_PASSWORD = "laspad-plateform"
     FROM_EMAIL = "laspad-plateform@hamadouba.com"
     FROM_NAME = "Santaane Platform"
-    PLATFORM_URL = Settings.PLATFORM_URL
+    PLATFORM_URL = "https://santaane.mansatoulo.fr"
     PRIMARY_COLOR = "#59a498"
     PRIMARY_COLOR_DARK = "#4a8a7f"
     
