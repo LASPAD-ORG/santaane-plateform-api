@@ -46,6 +46,9 @@ class Manuscript(SQLModel, table=True):
     # --- PDF obligatoire ---
     pdf_filename: str = Field(max_length=255, nullable=False)
 
+    # --- DOCX optionnel ---
+    docx_filename: Optional[str] = Field(default=None, max_length=255, nullable=True)
+
     # --- Dates métier ---
     last_revision_at: Optional[datetime] = Field(default=None)
     decision_at: Optional[datetime] = Field(default=None)

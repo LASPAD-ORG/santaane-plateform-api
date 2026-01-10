@@ -101,6 +101,7 @@ class ManuscriptService:
             section_id=manuscript_data.sectionId,
             language_id=manuscript_data.languageId,
             pdf_filename=manuscript_data.pdfFilename,
+            docx_filename=manuscript_data.docxFilename,
             status=ManuscriptStatus.SUBMITTED
         )
 
@@ -146,6 +147,7 @@ class ManuscriptService:
             languageName=language.name,
             status=created_manuscript.status,
             pdfFilename=created_manuscript.pdf_filename,
+            docxFilename=created_manuscript.docx_filename,
             createdAt=created_manuscript.created_at,
             updatedAt=created_manuscript.updated_at
         )
@@ -223,6 +225,7 @@ class ManuscriptService:
                     languageName=language.name if language else "",
                     status=manuscript.status,
                     pdfFilename=manuscript.pdf_filename,
+                    docxFilename=manuscript.docx_filename,
                     evaluators=evaluator_assignments,
                     createdAt=manuscript.created_at,
                     updatedAt=manuscript.updated_at
@@ -295,6 +298,7 @@ class ManuscriptService:
                     languageName=language.name if language else "",
                     status=manuscript.status,
                     pdfFilename=manuscript.pdf_filename,
+                    docxFilename=manuscript.docx_filename,
                     evaluators=evaluator_assignments,
                     createdAt=manuscript.created_at,
                     updatedAt=manuscript.updated_at
@@ -347,6 +351,7 @@ class ManuscriptService:
             languageName=language.name if language else "",
             status=manuscript.status,
             pdfFilename=manuscript.pdf_filename,
+            docxFilename=manuscript.docx_filename,
             author=AuthorInfo(
                 email=author.email,
                 fullName=author.full_name,
@@ -397,6 +402,7 @@ class ManuscriptService:
             languageName=language.name if language else "",
             status=manuscript.status,
             pdfFilename=manuscript.pdf_filename,
+            docxFilename=manuscript.docx_filename,
             createdAt=manuscript.created_at,
             updatedAt=manuscript.updated_at
         )
@@ -444,6 +450,8 @@ class ManuscriptService:
             manuscript.keywords = revision_data.keywords
         if revision_data.pdfFilename is not None:
             manuscript.pdf_filename = revision_data.pdfFilename
+        if revision_data.docxFilename is not None:
+            manuscript.docx_filename = revision_data.docxFilename
         
         # Validate and update theme if provided
         if revision_data.themeId is not None:
@@ -518,6 +526,72 @@ class ManuscriptService:
             languageName=language.name if language else "",
             status=updated_manuscript.status,
             pdfFilename=updated_manuscript.pdf_filename,
+            docxFilename=updated_manuscript.docx_filename,
+            createdAt=updated_manuscript.created_at,
+            updatedAt=updated_manuscript.updated_at
+        )
+
+    async def upload_docx_for_accepted_manuscript(
+        self,
+        manuscript_id: int,
+        docx_filename: str,
+        current_user_id: int
+    ) -> ManuscriptResponse:
+        """Upload DOCX file for an accepted manuscript (author only)"""
+        logger.info(f"Author {current_user_id} uploading DOCX for manuscript {manuscript_id}")
+
+        manuscript = await self.repository.get_manuscript_by_id(manuscript_id)
+
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ManuscriptErrorCode.MANUSCRIPT_NOT_FOUND
+            )
+
+        # Verify that the current user is the author
+        if manuscript.author_id != current_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only upload DOCX for your own manuscripts"
+            )
+
+        # Verify that the manuscript status is ACCEPTED
+        if manuscript.status != ManuscriptStatus.ACCEPTED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"DOCX can only be uploaded for accepted manuscripts. Current status: '{manuscript.status.value}'"
+            )
+
+        # Validate docx_filename
+        if not docx_filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="DOCX filename is required"
+            )
+
+        # Update docx_filename
+        manuscript.docx_filename = docx_filename
+
+        # Save changes
+        updated_manuscript = await self.repository.update_manuscript(manuscript)
+        logger.info(f"DOCX uploaded successfully for manuscript {manuscript_id}")
+
+        # Fetch related data for response
+        theme = await self.repository.get_theme_by_id(updated_manuscript.theme_id) if updated_manuscript.theme_id else None
+        section = await self.repository.get_section_by_id(updated_manuscript.section_id)
+        language = await self.repository.get_language_by_id(updated_manuscript.language_id)
+
+        return ManuscriptResponse(
+            id=updated_manuscript.id,
+            title=updated_manuscript.title,
+            abstract=updated_manuscript.abstract,
+            keywords=updated_manuscript.keywords,
+            themeName=theme.title if theme else None,
+            sectionName=section.name if section else "",
+            languageName=language.name if language else "",
+            status=updated_manuscript.status,
+            pdfFilename=updated_manuscript.pdf_filename,
+            docxFilename=updated_manuscript.docx_filename,
             createdAt=updated_manuscript.created_at,
             updatedAt=updated_manuscript.updated_at
         )
@@ -580,6 +654,8 @@ class ManuscriptService:
             manuscript.language_id = update_data.languageId
         if update_data.pdfFilename is not None:
             manuscript.pdf_filename = update_data.pdfFilename
+        if update_data.docxFilename is not None:
+            manuscript.docx_filename = update_data.docxFilename
 
         updated_manuscript = await self.repository.update_manuscript(manuscript)
         logger.info(f"Manuscript {manuscript_id} updated successfully by staff")
@@ -697,6 +773,7 @@ class ManuscriptService:
                     languageName=manuscript.language.name,
                     status=manuscript.status,
                     pdfFilename=manuscript.pdf_filename,
+                    docxFilename=manuscript.docx_filename,
                     assignmentStatus=assignment.status,
                     assignedAt=assignment.assigned_at,
                     evaluationDeadline=assignment.evaluation_deadline,

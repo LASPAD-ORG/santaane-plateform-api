@@ -284,3 +284,32 @@ async def revise_manuscript(
         revision_data=revision_data,
         current_user_id=current_user.id
     )
+
+
+@router.put(
+    "/{manuscript_id}/docx",
+    response_model=ManuscriptResponse,
+    dependencies=[Depends(require_role(UserRole.AUTHOR))]
+)
+async def upload_docx_for_accepted_manuscript(
+    manuscript_id: int,
+    docx_data: dict,
+    current_user: User = Depends(get_current_user),
+    service: ManuscriptService = Depends(get_manuscript_service)
+):
+    """
+    Upload DOCX file for an accepted manuscript
+
+    Requires AUTHOR role
+
+    Only the manuscript author can upload DOCX
+    Only works for manuscripts with status ACCEPTED
+
+    - **manuscript_id**: ID of the manuscript
+    - **docxFilename**: Path to the uploaded DOCX file
+    """
+    return await service.upload_docx_for_accepted_manuscript(
+        manuscript_id=manuscript_id,
+        docx_filename=docx_data.get('docxFilename'),
+        current_user_id=current_user.id
+    )

@@ -17,6 +17,7 @@ class ManuscriptSubmit(BaseModel):
     sectionId: int = Field(..., gt=0)
     languageId: int = Field(..., gt=0)
     pdfFilename: str = Field(..., description="Name of the uploaded PDF file")
+    docxFilename: Optional[str] = Field(None, description="Optional name of the uploaded DOCX file")
 
 
 class ManuscriptRevision(BaseModel):
@@ -28,6 +29,7 @@ class ManuscriptRevision(BaseModel):
     sectionId: Optional[int] = Field(None, gt=0)
     languageId: Optional[int] = Field(None, gt=0)
     pdfFilename: Optional[str] = Field(None, description="Name of the uploaded PDF file")
+    docxFilename: Optional[str] = Field(None, description="Optional name of the uploaded DOCX file")
 
 
 class ManuscriptUpdate(BaseModel):
@@ -39,6 +41,7 @@ class ManuscriptUpdate(BaseModel):
     sectionId: Optional[int] = Field(None, gt=0)
     languageId: Optional[int] = Field(None, gt=0)
     pdfFilename: Optional[str] = Field(None, description="Name of the uploaded PDF file")
+    docxFilename: Optional[str] = Field(None, description="Optional name of the uploaded DOCX file")
 
 
 class ManuscriptStatusUpdate(BaseModel):
@@ -90,6 +93,7 @@ class ManuscriptResponse(BaseModel):
     languageName: str
     status: ManuscriptStatus
     pdfFilename: str
+    docxFilename: Optional[str] = None
     evaluators: List[EvaluatorAssignment] = Field(default_factory=list)
     # Anonymisation fields
     isAnonymized: bool = Field(default=False)
@@ -115,6 +119,7 @@ class ManuscriptDetailResponse(BaseModel):
     languageName: str
     status: ManuscriptStatus
     pdfFilename: str
+    docxFilename: Optional[str] = None
     author: AuthorInfo
     # Anonymisation fields
     isAnonymized: bool = Field(default=False)
@@ -143,6 +148,7 @@ class EvaluatorManuscriptResponse(BaseModel):
     languageName: str
     status: ManuscriptStatus
     pdfFilename: str
+    docxFilename: Optional[str] = None
     assignmentStatus: EvaluatorAssignmentStatus
     assignedAt: datetime
     evaluationDeadline: Optional[datetime] = None

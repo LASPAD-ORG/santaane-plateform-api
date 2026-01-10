@@ -1,8 +1,8 @@
-"""auto_migration_20251224_171447
+"""auto_migration_20260109_233924
 
-Revision ID: 19ba8f0efa3a
+Revision ID: e2a798cb3f4f
 Revises: 
-Create Date: 2025-12-24 16:14:50.642008
+Create Date: 2026-01-09 23:39:26.064705
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = '19ba8f0efa3a'
+revision: str = 'e2a798cb3f4f'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -64,6 +64,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('title', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('date_limite', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -83,6 +84,12 @@ def upgrade() -> None:
     sa.Column('institution', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('otp_code', sqlmodel.sql.sqltypes.AutoString(length=6), nullable=True),
+    sa.Column('otp_expires_at', sa.DateTime(), nullable=True),
+    sa.Column('otp_send_count', sa.Integer(), nullable=False),
+    sa.Column('last_otp_sent_at', sa.DateTime(), nullable=True),
+    sa.Column('reset_token', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
+    sa.Column('reset_token_expires_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
@@ -103,12 +110,17 @@ def upgrade() -> None:
     sa.Column('section_id', sa.Integer(), nullable=False),
     sa.Column('language_id', sa.Integer(), nullable=False),
     sa.Column('status', sa.Enum('SUBMITTED', 'RE_SUBMITTED', 'UNDER_REVIEW', 'REVISED', 'ACCEPTED', 'REJECTED', 'REVISION_REQUESTED', 'PUBLISHED', name='manuscriptstatus'), nullable=False),
+    sa.Column('evaluation_status', sa.String(length=50), nullable=False),
     sa.Column('pdf_filename', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
     sa.Column('last_revision_at', sa.DateTime(), nullable=True),
     sa.Column('decision_at', sa.DateTime(), nullable=True),
     sa.Column('published_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('is_anonymized', sa.Boolean(), nullable=False),
+    sa.Column('anonymized_at', sa.DateTime(), nullable=True),
+    sa.Column('anonymized_by_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['anonymized_by_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['author_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['language_id'], ['languages.id'], ),
     sa.ForeignKeyConstraint(['section_id'], ['sections.id'], ),
@@ -116,6 +128,8 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_manuscripts_author_id'), 'manuscripts', ['author_id'], unique=False)
+    op.create_index(op.f('ix_manuscripts_evaluation_status'), 'manuscripts', ['evaluation_status'], unique=False)
+    op.create_index(op.f('ix_manuscripts_is_anonymized'), 'manuscripts', ['is_anonymized'], unique=False)
     op.create_index(op.f('ix_manuscripts_language_id'), 'manuscripts', ['language_id'], unique=False)
     op.create_index(op.f('ix_manuscripts_section_id'), 'manuscripts', ['section_id'], unique=False)
     op.create_index(op.f('ix_manuscripts_status'), 'manuscripts', ['status'], unique=False)
@@ -135,22 +149,48 @@ def upgrade() -> None:
     op.create_index(op.f('ix_user_roles_role_id'), 'user_roles', ['role_id'], unique=False)
     op.create_index(op.f('ix_user_roles_user_id'), 'user_roles', ['user_id'], unique=False)
     op.create_table('manuscript_annotations',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
     sa.Column('manuscript_id', sa.Integer(), nullable=False),
     sa.Column('evaluator_id', sa.Integer(), nullable=False),
+    sa.Column('annotation_type', sqlmodel.sql.sqltypes.AutoString(length=20), nullable=False),
+    sa.Column('created_by_role', sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True),
     sa.Column('page_number', sa.Integer(), nullable=False),
     sa.Column('x_position', sa.Float(), nullable=False),
     sa.Column('y_position', sa.Float(), nullable=False),
+    sa.Column('position_data', sa.Text(), nullable=False),
     sa.Column('comment', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('highlighted_text', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('content_data', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.CheckConstraint("annotation_type IN ('text', 'area', 'freetext', 'redaction')", name='check_annotation_type'),
     sa.ForeignKeyConstraint(['evaluator_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['manuscript_id'], ['manuscripts.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_manuscript_annotations_evaluator_id'), 'manuscript_annotations', ['evaluator_id'], unique=False)
     op.create_index(op.f('ix_manuscript_annotations_manuscript_id'), 'manuscript_annotations', ['manuscript_id'], unique=False)
+    op.create_table('manuscript_evaluation_grids',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('manuscript_id', sa.Integer(), nullable=False),
+    sa.Column('evaluator_id', sa.Integer(), nullable=False),
+    sa.Column('originality_of_ideas', sa.Text(), nullable=False),
+    sa.Column('methodology_rigor', sa.Text(), nullable=False),
+    sa.Column('theoretical_approach', sa.Text(), nullable=False),
+    sa.Column('presentation_clarity', sa.Text(), nullable=False),
+    sa.Column('strengths', sa.Text(), nullable=False),
+    sa.Column('weaknesses', sa.Text(), nullable=False),
+    sa.Column('suggestions', sa.Text(), nullable=True),
+    sa.Column('recommendation', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('submitted_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['evaluator_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['manuscript_id'], ['manuscripts.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('manuscript_id', 'evaluator_id', name='uq_manuscript_evaluator')
+    )
+    op.create_index(op.f('ix_manuscript_evaluation_grids_evaluator_id'), 'manuscript_evaluation_grids', ['evaluator_id'], unique=False)
+    op.create_index(op.f('ix_manuscript_evaluation_grids_manuscript_id'), 'manuscript_evaluation_grids', ['manuscript_id'], unique=False)
     op.create_table('manuscript_evaluators',
     sa.Column('manuscript_id', sa.Integer(), nullable=False),
     sa.Column('evaluator_id', sa.Integer(), nullable=False),
@@ -173,6 +213,9 @@ def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_index(op.f('ix_manuscript_evaluators_assigned_by_id'), table_name='manuscript_evaluators')
     op.drop_table('manuscript_evaluators')
+    op.drop_index(op.f('ix_manuscript_evaluation_grids_manuscript_id'), table_name='manuscript_evaluation_grids')
+    op.drop_index(op.f('ix_manuscript_evaluation_grids_evaluator_id'), table_name='manuscript_evaluation_grids')
+    op.drop_table('manuscript_evaluation_grids')
     op.drop_index(op.f('ix_manuscript_annotations_manuscript_id'), table_name='manuscript_annotations')
     op.drop_index(op.f('ix_manuscript_annotations_evaluator_id'), table_name='manuscript_annotations')
     op.drop_table('manuscript_annotations')
@@ -184,6 +227,8 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_manuscripts_status'), table_name='manuscripts')
     op.drop_index(op.f('ix_manuscripts_section_id'), table_name='manuscripts')
     op.drop_index(op.f('ix_manuscripts_language_id'), table_name='manuscripts')
+    op.drop_index(op.f('ix_manuscripts_is_anonymized'), table_name='manuscripts')
+    op.drop_index(op.f('ix_manuscripts_evaluation_status'), table_name='manuscripts')
     op.drop_index(op.f('ix_manuscripts_author_id'), table_name='manuscripts')
     op.drop_table('manuscripts')
     op.drop_table('cities')
