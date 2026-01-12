@@ -205,3 +205,81 @@ class EvaluatorAssignmentService:
                 "message": "Assignment declined and removed",
                 "status": "declined"
             }
+
+    async def send_reminder_email(
+        self,
+        manuscript_id: int,
+        evaluator_id: int
+    ) -> dict:
+        """Send reminder email to evaluator who hasn't responded"""
+
+        # Get assignment
+        result = await self.db.execute(
+            select(ManuscriptEvaluatorLink).where(
+                ManuscriptEvaluatorLink.manuscript_id == manuscript_id,
+                ManuscriptEvaluatorLink.evaluator_id == evaluator_id
+            )
+        )
+        assignment = result.scalar_one_or_none()
+
+        if not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assignment not found"
+            )
+
+        # Only send reminder if status is PENDING
+        if assignment.status != EvaluatorAssignmentStatus.PENDING:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot send reminder: assignment status is {assignment.status.value}"
+            )
+
+        # Get manuscript and evaluator details
+        manuscript_result = await self.db.execute(
+            select(Manuscript).where(Manuscript.id == manuscript_id)
+        )
+        manuscript = manuscript_result.scalar_one_or_none()
+
+        if not manuscript:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Manuscript with ID {manuscript_id} not found"
+            )
+
+        evaluator_result = await self.db.execute(
+            select(User).where(User.id == evaluator_id)
+        )
+        evaluator = evaluator_result.scalar_one_or_none()
+
+        if not evaluator:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Evaluator with ID {evaluator_id} not found"
+            )
+
+        # Format deadline for email (French format: jj/mm/aaaa)
+        deadline_str = assignment.evaluation_deadline.strftime("%d/%m/%Y")
+
+        # Send reminder email
+        email_sent = EmailService.send_evaluation_reminder_email(
+            to_email=evaluator.email,
+            evaluator_name=evaluator.full_name,
+            manuscript_title=manuscript.title,
+            evaluation_deadline=deadline_str
+        )
+
+        if not email_sent:
+            logger.warning(f"Failed to send reminder email to {evaluator.email}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send reminder email"
+            )
+
+        logger.info(f"Reminder email sent to {evaluator.email} for manuscript {manuscript_id}")
+
+        return {
+            "message": "Reminder email sent successfully",
+            "evaluatorEmail": evaluator.email,
+            "manuscriptTitle": manuscript.title
+        }

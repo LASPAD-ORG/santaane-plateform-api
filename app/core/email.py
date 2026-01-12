@@ -490,69 +490,153 @@ class EmailService:
     ) -> bool:
         """
         Send evaluation request email to an evaluator
-        
+
         Args:
             to_email: Evaluator email
             evaluator_name: Evaluator's name
             manuscript_title: Title of the manuscript
             manuscript_pdf_url: URL to the manuscript PDF
             evaluation_deadline: Deadline for evaluation (formatted date string)
-            
+
         Returns:
             bool: True if sent successfully
         """
         subject = f"Demande d'évaluation - {manuscript_title}"
-        
+
         content = f"""
         <div style="color: #333;">
             <p style="font-size: 18px; margin-bottom: 25px;">
                 Cher(e) Pr. <strong>{evaluator_name}</strong>,
             </p>
-            
+
             <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
                 Nous espérons que vous allez bien.
             </p>
-            
+
             <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
                 Nous croyons que vous seriez un(e) excellent(e) rapporteur(rice) pour le manuscrit intitulé :
             </p>
-            
+
             <div style="background: #f8f9fa; border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin: 25px 0;">
                 <h3 style="margin: 0; color: #59a498;">\u201C{manuscript_title}\u201D</h3>
                 <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
                     Soumis à la revue <strong>Global Africa</strong>
                 </p>
             </div>
-            
+
             <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
                 Les détails du manuscrit ainsi que la grille d'évaluation sont disponibles dans votre espace personnel sur la plateforme.
             </p>
-            
+
             <div style="text-align: center; margin: 35px 0;">
                 <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
                     Se connecter
                 </a>
             </div>
-            
+
             <div style="background: #e8f5f3; border-left: 4px solid #59a498; padding: 15px; border-radius: 8px; margin: 25px 0;">
                 <p style="margin: 0; font-size: 14px; color: #4a8a7f;">
                     <strong>Délai d'évaluation :</strong><br>
                     En espérant que vous accepterez notre demande, nous souhaiterions recevoir votre évaluation d'ici le <strong>{evaluation_deadline}</strong>.
                 </p>
             </div>
-            
+
             <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
                 Dans l'attente de votre retour, veuillez agréer l'expression de notre considération distinguée.
             </p>
-            
+
             <p style="font-size: 15px; margin-top: 25px;">
                 Cordialement,<br>
                 <strong style="color: #59a498;">L'équipe éditoriale de Global Africa</strong>
             </p>
         </div>
         """
-        
+
         body = cls._get_base_template("Demande d'évaluation", content)
+        return cls.send_email(to_email, subject, body)
+
+    @classmethod
+    def send_evaluation_reminder_email(
+        cls,
+        to_email: str,
+        evaluator_name: str,
+        manuscript_title: str,
+        evaluation_deadline: str
+    ) -> bool:
+        """
+        Send evaluation reminder email to an evaluator who hasn't responded
+
+        Args:
+            to_email: Evaluator email
+            evaluator_name: Evaluator's name
+            manuscript_title: Title of the manuscript
+            evaluation_deadline: Deadline for evaluation (formatted date string)
+
+        Returns:
+            bool: True if sent successfully
+        """
+        subject = f"Relance - Demande d'évaluation - {manuscript_title}"
+
+        content = f"""
+        <div style="color: #333;">
+            <p style="font-size: 18px; margin-bottom: 25px;">
+                Cher(e) Pr. <strong>{evaluator_name}</strong>,
+            </p>
+
+            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                Nous espérons que vous allez bien.
+            </p>
+
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <p style="margin: 0; font-size: 16px; color: #856404;">
+                    <strong>Rappel :</strong> Nous vous avons récemment sollicité(e) pour évaluer un manuscrit.
+                </p>
+            </div>
+
+            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                Nous n'avons pas encore reçu votre réponse concernant la demande d'évaluation du manuscrit intitulé :
+            </p>
+
+            <div style="background: #f8f9fa; border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h3 style="margin: 0; color: #59a498;">\u201C{manuscript_title}\u201D</h3>
+                <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
+                    Soumis à la revue <strong>Global Africa</strong>
+                </p>
+            </div>
+
+            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                Nous comprenons que vous soyez très sollicité(e), mais nous aurions besoin de connaître votre disponibilité pour cette évaluation.
+            </p>
+
+            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                Pourriez-vous nous confirmer si vous êtes en mesure d'accepter ou de décliner cette demande d'évaluation ? Vous pouvez accéder à votre espace personnel en cliquant sur le bouton ci-dessous.
+            </p>
+
+            <div style="text-align: center; margin: 35px 0;">
+                <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                    Se connecter
+                </a>
+            </div>
+
+            <div style="background: #e8f5f3; border-left: 4px solid #59a498; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                <p style="margin: 0; font-size: 14px; color: #4a8a7f;">
+                    <strong>Délai d'évaluation :</strong><br>
+                    Si vous acceptez, nous souhaiterions recevoir votre évaluation d'ici le <strong>{evaluation_deadline}</strong>.
+                </p>
+            </div>
+
+            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                Dans l'attente de votre retour, veuillez agréer l'expression de notre considération distinguée.
+            </p>
+
+            <p style="font-size: 15px; margin-top: 25px;">
+                Cordialement,<br>
+                <strong style="color: #59a498;">L'équipe éditoriale de Global Africa</strong>
+            </p>
+        </div>
+        """
+
+        body = cls._get_base_template("Relance - Demande d'évaluation", content)
         return cls.send_email(to_email, subject, body)
 
     # ==========================================

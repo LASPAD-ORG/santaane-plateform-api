@@ -105,20 +105,20 @@ async def get_manuscript_evaluation_status_for_evaluator(
 ):
     """
     Get evaluation status for a manuscript specific to the current evaluator.
-    
+
     **Requires:** EVALUATOR role
-    
+
     **Parameters:**
     - **manuscript_id**: ID of the manuscript
-    
+
     **Returns:**
     - **evaluationStatus**: 'not_started', 'in_progress', or 'completed'
-    
+
     **Status Logic:**
     - **not_started**: Evaluator assigned but no evaluation grid exists
-    - **in_progress**: Evaluation grid exists but not submitted (submitted_at is NULL)  
+    - **in_progress**: Evaluation grid exists but not submitted (submitted_at is NULL)
     - **completed**: Evaluation grid submitted (submitted_at is not NULL)
-    
+
     **Errors:**
     - **403**: Evaluator not assigned to manuscript or hasn't accepted assignment
     """
@@ -127,8 +127,48 @@ async def get_manuscript_evaluation_status_for_evaluator(
         manuscript_id=manuscript_id,
         evaluator_id=current_user.id
     )
-    
+
     return {
         "manuscriptId": manuscript_id,
         "evaluationStatus": evaluation_status
     }
+
+
+@router.post(
+    "/{manuscript_id}/evaluator/{evaluator_id}/send-reminder",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_any_role(UserRole.EDITOR, UserRole.SUPER_ADMIN))],
+    summary="Send reminder email to evaluator"
+)
+async def send_reminder_to_evaluator(
+    manuscript_id: int,
+    evaluator_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Send a reminder email to an evaluator who hasn't responded to evaluation request.
+
+    **Requires:** EDITOR or SUPER_ADMIN role
+
+    **Parameters:**
+    - **manuscript_id**: ID of the manuscript
+    - **evaluator_id**: ID of the evaluator
+
+    **Process:**
+    1. Validates that assignment exists and is in PENDING status
+    2. Sends reminder email to evaluator
+    3. Email reminds evaluator to accept or decline the evaluation request
+
+    **Returns:** Success message with evaluator email and manuscript title
+
+    **Errors:**
+    - **404**: Assignment not found
+    - **400**: Assignment is not in PENDING status (already accepted/rejected)
+    - **500**: Failed to send email
+    """
+    service = EvaluatorAssignmentService(db)
+    return await service.send_reminder_email(
+        manuscript_id=manuscript_id,
+        evaluator_id=evaluator_id
+    )
