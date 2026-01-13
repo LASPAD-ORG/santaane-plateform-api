@@ -18,5 +18,13 @@ async def get_manuscript_repository(
 async def get_manuscript_service(
     repository: ManuscriptRepository = Depends(get_manuscript_repository)
 ) -> ManuscriptService:
-    """Dependency for manuscript service"""
-    return ManuscriptService(repository)
+    """
+    Dependency for manuscript service
+    
+    Args:
+        repository: Le repository des manuscrits
+        
+    Returns:
+        Une instance du service de manuscrit
+    """
+    return ManuscriptService(repository=repository)

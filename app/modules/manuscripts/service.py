@@ -22,6 +22,7 @@ from app.models.manuscript import Manuscript
 from app.models.enums import ManuscriptStatus
 from app.core.logging import get_logger
 from app.core.email import EmailService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger(__name__)
 
@@ -30,7 +31,40 @@ class ManuscriptService:
     """Service for manuscript business logic"""
 
     def __init__(self, repository: ManuscriptRepository):
+        """
+        Initialise le service avec le repository
+        Note: Le repository contient déjà une session qui sera utilisée
+        """
         self.repository = repository
+        
+    async def _get_manuscript_language(self, manuscript_id: int) -> str:
+        """
+        Récupère le code de langue d'un manuscrit (par défaut 'fr' si non spécifié)
+        
+        Args:
+            manuscript_id: ID du manuscrit
+            
+        Returns:
+            str: Code de langue sur 2 caractères (ex: 'fr', 'en')
+        """
+        try:
+            # Récupérer le manuscrit avec la relation language chargée
+            manuscript = await self.repository.get_manuscript_by_id(manuscript_id)
+            
+            if not manuscript:
+                logger.warning(f"Manuscrit {manuscript_id} non trouvé, utilisation de 'fr' par défaut")
+                return 'fr'
+                
+            # Si la langue est chargée, retourner son code
+            if hasattr(manuscript, 'language') and manuscript.language:
+                return manuscript.language.code or 'fr'
+                
+            logger.warning(f"Aucune langue trouvée pour le manuscrit {manuscript_id}, utilisation de 'fr' par défaut")
+            return 'fr'
+                
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération de la langue du manuscrit {manuscript_id}: {str(e)}")
+            return 'fr'
 
     async def _get_evaluator_evaluation_status(self, manuscript_id: int, evaluator_id: int) -> str:
         """
@@ -114,6 +148,10 @@ class ManuscriptService:
         # Récupérer les informations de l'auteur pour l'email
         author = await self.repository.get_user_by_id(author_id)
         
+        # Récupérer la langue du manuscrit
+        language = await self.repository.get_language_by_id(manuscript_data.languageId)
+        manuscript_lang = language.code if language else 'fr'
+        
         # Envoyer notification au système
         EmailService.send_new_submission_notification(
             manuscript_id=created_manuscript.id,
@@ -121,7 +159,8 @@ class ManuscriptService:
             author_name=author.full_name if author else "Auteur inconnu",
             author_email=author.email if author else "",
             section_name=section.name,
-            theme_name=theme.title if theme else None
+            theme_name=theme.title if theme else None,
+            lang=manuscript_lang
         )
         
         # Envoyer confirmation à l'auteur
@@ -131,7 +170,8 @@ class ManuscriptService:
                     to_email=author.email,
                     author_name=author.full_name,
                     manuscript_title=created_manuscript.title,
-                    manuscript_id=created_manuscript.id
+                    manuscript_id=created_manuscript.id,
+                    lang=manuscript_lang
                 )
                 logger.info(f"Submission confirmation email sent to {author.email}")
         except Exception as e:
@@ -494,7 +534,7 @@ class ManuscriptService:
         # Send notification email to system about re-submission
         try:
             author = manuscript.author
-            author_name = f"{author.first_name} {author.last_name}" if author else "Auteur"
+            author_name = f"{author.full_name}" if author else "Auteur"
             author_email = author.email if author else ""
             
             # Calculate revision number (count of times manuscript was revised)
@@ -702,52 +742,77 @@ class ManuscriptService:
         await self.repository.update_manuscript(manuscript)
         logger.info(f"Manuscript {manuscript_id} status changed to {status_data.status}")
 
-        # Send email notification to author based on status
+        # Send email notification to author based on status in a separate thread
         try:
+            from fastapi.concurrency import run_in_threadpool
+            
             author = manuscript.author
-            author_name = f"{author.first_name} {author.last_name}"
+            author_name = f"{author.full_name}"
             author_email = author.email
             
-            if status_data.status == ManuscriptStatus.ACCEPTED:
-                EmailService.send_manuscript_accepted_email(
-                    to_email=author_email,
-                    author_name=author_name,
-                    manuscript_title=manuscript.title,
-                    manuscript_id=manuscript_id
-                )
-                logger.info(f"Acceptance email sent to {author_email}")
-                
-            elif status_data.status == ManuscriptStatus.REJECTED:
-                EmailService.send_manuscript_rejected_email(
-                    to_email=author_email,
-                    author_name=author_name,
-                    manuscript_title=manuscript.title,
-                    manuscript_id=manuscript_id,
-                    rejection_reason=status_data.comment if hasattr(status_data, 'comment') else None
-                )
-                logger.info(f"Rejection email sent to {author_email}")
-                
-            elif status_data.status == ManuscriptStatus.PUBLISHED:
-                EmailService.send_manuscript_published_email(
-                    to_email=author_email,
-                    author_name=author_name,
-                    manuscript_title=manuscript.title,
-                    manuscript_id=manuscript_id
-                )
-                logger.info(f"Publication email sent to {author_email}")
-                
-            elif status_data.status == ManuscriptStatus.REVISION_REQUESTED:
-                EmailService.send_revision_requested_email(
-                    to_email=author_email,
-                    author_name=author_name,
-                    manuscript_title=manuscript.title,
-                    manuscript_id=manuscript_id,
-                    revision_comments=status_data.comment if hasattr(status_data, 'comment') else None
-                )
-                logger.info(f"Revision request email sent to {author_email}")
-                
+            async def send_email_async():
+                try:
+                    if status_data.status == ManuscriptStatus.ACCEPTED:
+                        # Récupérer la langue du manuscrit
+                        manuscript_lang = await self._get_manuscript_language(manuscript_id)
+                        
+                        # Envoyer l'email d'acceptation dans la langue appropriée
+                        await run_in_threadpool(
+                            EmailService.send_manuscript_accepted_email,
+                            to_email=author_email,
+                            author_name=author_name,
+                            manuscript_title=manuscript.title,
+                            manuscript_id=manuscript_id,
+                            lang=manuscript_lang
+                        )
+                        logger.info(f"Acceptance email sent to {author_email}")
+                        
+                    elif status_data.status == ManuscriptStatus.REJECTED:
+                        await run_in_threadpool(
+                            EmailService.send_manuscript_rejected_email,
+                            to_email=author_email,
+                            author_name=author_name,
+                            manuscript_title=manuscript.title,
+                            manuscript_id=manuscript_id,
+                            rejection_reason=status_data.comment if hasattr(status_data, 'comment') else None
+                        )
+                        logger.info(f"Rejection email sent to {author_email}")
+                        
+                    elif status_data.status == ManuscriptStatus.PUBLISHED:
+                        await run_in_threadpool(
+                            EmailService.send_manuscript_published_email,
+                            to_email=author_email,
+                            author_name=author_name,
+                            manuscript_title=manuscript.title,
+                            manuscript_id=manuscript_id
+                        )
+                        logger.info(f"Publication email sent to {author_email}")
+                        
+                    elif status_data.status == ManuscriptStatus.REVISION_REQUESTED:
+                        # Récupérer la langue du manuscrit
+                        manuscript_lang = await self._get_manuscript_language(manuscript_id)
+                        
+                        # Envoyer l'email de demande de révision dans la langue appropriée
+                        await run_in_threadpool(
+                            EmailService.send_revision_requested_email,
+                            to_email=author_email,
+                            author_name=author_name,
+                            manuscript_title=manuscript.title,
+                            manuscript_id=manuscript_id,
+                            revision_comments=status_data.comment if hasattr(status_data, 'comment') else None,
+                            lang=manuscript_lang
+                        )
+                        logger.info(f"Revision request email sent to {author_email}")
+                        
+                except Exception as e:
+                    logger.error(f"Failed to send status change email: {str(e)}")
+            
+            # Lancer l'envoi d'email en arrière-plan sans attendre la fin
+            import asyncio
+            asyncio.create_task(send_email_async())
+            
         except Exception as e:
-            logger.error(f"Failed to send status change email: {str(e)}")
+            logger.error(f"Failed to schedule status change email: {str(e)}")
 
         # Return detailed response
         return await self.get_manuscript_detail_for_staff(manuscript_id)

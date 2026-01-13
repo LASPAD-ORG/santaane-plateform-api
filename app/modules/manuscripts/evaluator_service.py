@@ -6,6 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timezone
+from sqlalchemy import select
+from app.models.language import Language
 from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 from app.models.manuscript import Manuscript
 from app.models.user import User
@@ -260,13 +262,21 @@ class EvaluatorAssignmentService:
 
         # Format deadline for email (French format: jj/mm/aaaa)
         deadline_str = assignment.evaluation_deadline.strftime("%d/%m/%Y")
+        
+        # Récupérer la langue du manuscrit
+        language_result = await self.db.execute(
+            select(Language).where(Language.id == manuscript.language_id)
+        )
+        language = language_result.scalar_one_or_none()
+        language_code = language.code.lower() if language else 'fr'
 
         # Send reminder email
         email_sent = EmailService.send_evaluation_reminder_email(
             to_email=evaluator.email,
             evaluator_name=evaluator.full_name,
             manuscript_title=manuscript.title,
-            evaluation_deadline=deadline_str
+            evaluation_deadline=deadline_str,
+            lang=language_code
         )
 
         if not email_sent:

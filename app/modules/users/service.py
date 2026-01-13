@@ -75,6 +75,29 @@ class UserService:
 
         # Create user
         user = await self.repository.create(data, password_hash)
+        
+        # Send new user credentials email
+        from app.core.email import EmailService
+        
+        # Get user with roles loaded
+        user_with_roles = await self.repository.get_with_roles(user.id)
+        
+        # Get the first role name if available, otherwise use 'User' as default
+        role_name = 'User'
+        if user_with_roles and user_with_roles.user_roles:
+            # Get the first role's name if available
+            first_role = user_with_roles.user_roles[0]
+            if hasattr(first_role, 'role') and hasattr(first_role.role, 'name'):
+                role_name = first_role.role.name
+        
+        # Send email in background task to avoid blocking
+        EmailService.send_new_user_credentials(
+            to_email=user.email,
+            full_name=user.full_name,
+            password=data.password,  # Use the plain password before hashing
+            role=role_name
+        )
+        
         return UserResponse.model_validate(user)
 
     async def create_evaluator(

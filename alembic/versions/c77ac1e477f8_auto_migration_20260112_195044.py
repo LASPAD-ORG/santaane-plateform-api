@@ -1,8 +1,8 @@
-"""auto_migration_20260109_233924
+"""auto_migration_20260112_195044
 
-Revision ID: e2a798cb3f4f
+Revision ID: c77ac1e477f8
 Revises: 
-Create Date: 2026-01-09 23:39:26.064705
+Create Date: 2026-01-12 19:50:46.408256
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'e2a798cb3f4f'
+revision: str = 'c77ac1e477f8'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -112,6 +112,7 @@ def upgrade() -> None:
     sa.Column('status', sa.Enum('SUBMITTED', 'RE_SUBMITTED', 'UNDER_REVIEW', 'REVISED', 'ACCEPTED', 'REJECTED', 'REVISION_REQUESTED', 'PUBLISHED', name='manuscriptstatus'), nullable=False),
     sa.Column('evaluation_status', sa.String(length=50), nullable=False),
     sa.Column('pdf_filename', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
+    sa.Column('docx_filename', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('last_revision_at', sa.DateTime(), nullable=True),
     sa.Column('decision_at', sa.DateTime(), nullable=True),
     sa.Column('published_at', sa.DateTime(), nullable=True),

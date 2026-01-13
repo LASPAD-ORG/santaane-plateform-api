@@ -110,6 +110,8 @@ class EmailService:
             bool: True if email sent successfully, False otherwise
         """
         try:
+            logger.info(f"Preparing to send email to {to_email} with subject: {subject}")
+            
             # Create message
             message = MIMEMultipart("alternative")
             message["From"] = f"{cls.FROM_NAME} <{cls.FROM_EMAIL}>"
@@ -137,16 +139,29 @@ class EmailService:
             else:
                 message.attach(MIMEText(body, "plain"))
             
-            # Connect to SMTP server with SSL
-            with smtplib.SMTP_SSL(cls.SMTP_SERVER, cls.SMTP_PORT) as server:
-                server.login(cls.SMTP_USERNAME, cls.SMTP_PASSWORD)
-                server.sendmail(cls.FROM_EMAIL, recipients, message.as_string())
+            logger.info(f"Connecting to SMTP server {cls.SMTP_SERVER}:{cls.SMTP_PORT}")
             
-            logger.info(f"Email sent successfully to {to_email}")
-            return True
+            # Connect to SMTP server with SSL
+            try:
+                with smtplib.SMTP_SSL(cls.SMTP_SERVER, cls.SMTP_PORT, timeout=10) as server:
+                    logger.info("SMTP connection established, attempting login...")
+                    server.login(cls.SMTP_USERNAME, cls.SMTP_PASSWORD)
+                    logger.info("SMTP login successful, sending email...")
+                    server.sendmail(cls.FROM_EMAIL, recipients, message.as_string())
+                    logger.info(f"Email sent successfully to {to_email}")
+                    return True
+            except smtplib.SMTPException as smtp_error:
+                logger.error(f"SMTP error while sending email: {str(smtp_error)}")
+                return False
+            except TimeoutError as timeout_error:
+                logger.error(f"SMTP connection timeout: {str(timeout_error)}")
+                return False
+            except Exception as conn_error:
+                logger.error(f"SMTP connection error: {str(conn_error)}")
+                return False
             
         except Exception as e:
-            logger.error(f"Failed to send email to {to_email}: {str(e)}")
+            logger.error(f"Failed to send email to {to_email}. Error: {str(e)}", exc_info=True)
             return False
     
     @classmethod
@@ -175,6 +190,80 @@ class EmailService:
         footer = '<p style="color: #666; font-size: 12px;">Note: Vous pouvez demander jusqu\'à 5 codes par jour.</p>'
         
         body = cls._get_base_template("Vérification de votre compte", content, footer)
+        return cls.send_email(to_email, subject, body)
+
+    @classmethod
+    def send_new_user_credentials(cls, to_email: str, full_name: str, password: str, role: str) -> bool:
+        """
+        Send welcome email with login credentials for new users
+        
+        Args:
+            to_email: Recipient email
+            full_name: User's full name
+            password: User's plain text password
+            role: User role (e.g., ADMIN, EDITOR, EVALUATOR,AUTHOR etc.)
+                # Send new user credentials email
+        
+        Returns:
+            bool: True if sent successfully
+        """
+        subject = "Bienvenue sur Santaane Platform - Vos identifiants de connexion"
+        
+        content = f"""
+        <div style="color: #333;">
+            <p style="font-size: 18px; margin-bottom: 25px;">
+                Bonjour <strong>{full_name}</strong>,
+            </p>
+            
+            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                Votre compte a été créé avec succès sur la plateforme Santaane.
+            </p>
+            
+            <div style="background: #f8f9fa; border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h3 style="margin: 0 0 15px 0; color: #59a498;">Vos identifiants de connexion</h3>
+                <p style="margin: 8px 0; font-size: 14px;">
+                    <strong>Email :</strong><br>
+                    <span style="color: #59a498; font-family: monospace; font-size: 16px;">{to_email}</span>
+                </p>
+                <p style="margin: 8px 0; font-size: 14px;">
+                    <strong>Mot de passe :</strong><br>
+                    <span style="color: #59a498; font-family: monospace; font-size: 16px;">{password}</span>
+                </p>
+                <p style="margin: 8px 0; font-size: 14px;">
+                    <strong>Rôle :</strong><br>
+                    <span style="color: #59a498; font-family: monospace; font-size: 16px;">{role}</span>
+                </p>
+            </div>
+            
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                <p style="margin: 0; font-size: 14px; color: #856404;">
+                    <strong>Important :</strong>
+                </p>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px; font-size: 14px; color: #856404;">
+                    <li>Veuillez changer votre mot de passe dès votre première connexion</li>
+                    <li>Ne partagez jamais vos identifiants avec qui que ce soit</li>
+                    <li>Conservez ce mot de passe en lieu sûr</li>
+                </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 35px 0;">
+                <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                    Se connecter
+                </a>
+            </div>
+            
+            <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                Si vous avez des questions, n'hésitez pas à nous contacter.
+            </p>
+            
+            <p style="font-size: 15px; margin-top: 25px;">
+                Cordialement,<br>
+                <strong style="color: #59a498;">L'équipe Santaane Platform</strong>
+            </p>
+        </div>
+        """
+        
+        body = cls._get_base_template("Bienvenue sur Santaane", content)
         return cls.send_email(to_email, subject, body)
 
     @classmethod
@@ -238,6 +327,16 @@ class EmailService:
         return cls.send_email(to_email, subject, body)
 
     @classmethod
+    def _is_french(cls, lang: str) -> bool:
+        """Vérifie si la langue est le français"""
+        return lang and lang.lower().startswith('fr')
+        
+    @classmethod
+    def _is_french(cls, lang: str) -> bool:
+        """Vérifie si la langue est le français"""
+        return lang and lang.lower().startswith('fr')
+        
+    @classmethod
     def send_new_submission_notification(
         cls, 
         manuscript_id: int,
@@ -245,7 +344,8 @@ class EmailService:
         author_name: str,
         author_email: str,
         section_name: str,
-        theme_name: str = None
+        theme_name: str = None,
+        lang: str = "fr"
     ) -> bool:
         """
         Envoie une notification au système quand un auteur soumet un manuscrit
@@ -257,65 +357,78 @@ class EmailService:
             author_email: Email de l'auteur
             section_name: Nom de la section
             theme_name: Nom du thème (optionnel)
+            lang: Langue du manuscrit (fr/en)
             
         Returns:
             bool: True si envoyé avec succès
         """
-        subject = f"Nouvelle soumission - {manuscript_title[:50]}..."
+        is_fr = cls._is_french(lang)
         
-        theme_info = f"<strong>{theme_name}</strong>" if theme_name else "<em>Aucun thème spécifié</em>"
-        
-        content = f"""
-        <div style="color: #333;">
-            <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-                <p style="margin: 0; font-size: 16px; color: {cls.PRIMARY_COLOR_DARK};">
-                    <strong>Nouvelle soumission de manuscrit</strong>
-                </p>
-            </div>
+        if is_fr:
+            subject = f"Nouvelle soumission - {manuscript_title[:50]}..."
+            theme_info = f"<strong>{theme_name}</strong>" if theme_name else "<em>Aucun thème spécifié</em>"
             
-            <p style="font-size: 15px; margin-bottom: 20px;">
-                Un nouvel article a été soumis sur la plateforme Santaane et nécessite votre attention.
-            </p>
+            # Construire le contenu en plusieurs parties pour éviter les problèmes d'indentation
+            content_parts = [
+                f"""
+                <div style="color: #333;">
+                    <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                        <p style="margin: 0; font-size: 16px; color: {cls.PRIMARY_COLOR_DARK};">
+                            <strong>Nouvelle soumission de manuscrit</strong>
+                        </p>
+                    </div>
+                    
+                    <p style="font-size: 15px; margin-bottom: 20px;">
+                        Un nouvel article a été soumis sur la plateforme Santaane et nécessite votre attention.
+                    </p>
+                    
+                    <table style="width: 100%; border-collapse: collapse; margin: 25px 0;">
+                        <tr>
+                            <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold; width: 30%;">ID Manuscrit</td>
+                            <td style="padding: 12px; border: 1px solid #ddd;">#{manuscript_id}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Titre</td>
+                            <td style="padding: 12px; border: 1px solid #ddd;"><strong>{manuscript_title}</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Auteur</td>
+                            <td style="padding: 12px; border: 1px solid #ddd;">{author_name} ({author_email})</td>
+                        </tr>"""
+            ]
             
-            <table style="width: 100%; border-collapse: collapse; margin: 25px 0;">
-                <tr>
-                    <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold; width: 30%;">ID Manuscrit</td>
-                    <td style="padding: 12px; border: 1px solid #ddd;">#{manuscript_id}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Titre</td>
-                    <td style="padding: 12px; border: 1px solid #ddd;"><strong>{manuscript_title}</strong></td>
-                </tr>
-                <tr>
-                    <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Auteur</td>
-                    <td style="padding: 12px; border: 1px solid #ddd;">{author_name} ({author_email})</td>
-                </tr>
-                <tr>
-                    <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Section</td>
-                    <td style="padding: 12px; border: 1px solid #ddd;">{section_name}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Thème</td>
-                    <td style="padding: 12px; border: 1px solid #ddd;">{theme_info}</td>
-                </tr>
-            </table>
+            if section_name:
+                content_parts.append(f"""
+                        <tr>
+                            <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Section</td>
+                            <td style="padding: 12px; border: 1px solid #ddd;">{section_name}</td>
+                        </tr>""")
+                
+            if theme_name:
+                content_parts.append(f"""
+                        <tr>
+                            <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Thème</td>
+                            <td style="padding: 12px; border: 1px solid #ddd;">{theme_info}</td>
+                        </tr>""")
+                
+            content_parts.append(f"""
+                    </table>
+                    
+                    <div style="text-align: center; margin: 35px 0 20px;">
+                        <a href="{cls.PLATFORM_URL}/dashboard/editor/manuscripts/{manuscript_id}" style="display: inline-block; padding: 14px 35px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; box-shadow: 0 4px 15px rgba(89, 164, 152, 0.4);">
+                            Voir le manuscrit
+                        </a>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                        Cet email a été envoyé automatiquement. Merci de ne pas y répondre.
+                    </p>
+                </div>""")
             
-            <div style="text-align: center; margin: 35px 0;">
-                <a href="{cls.PLATFORM_URL}/dashboard/editor/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                    Voir le manuscrit
-                </a>
-            </div>
-            
-            <p style="font-size: 13px; color: #888; margin-top: 30px; text-align: center;">
-                Cet email a été envoyé automatiquement suite à une nouvelle soumission.
-            </p>
-        </div>
-        """
-        
-        body = cls._get_base_template("Nouvelle Soumission", content)
-        return cls.send_email(cls.FROM_EMAIL, subject, body)
-
-    @classmethod
+            content = "".join(content_parts)
+        else:
+            subject = f"New submission - {manuscript_title[:50]}..."
+            theme_info = f"<strong>{theme_name}</strong>" if theme_name else "<em>No theme specified</em>"
     def send_secure_reset_link(cls, to_email: str, full_name: str, reset_token: str) -> bool:
         """Envoie le lien de réinitialisation avec avertissement d'expiration de 5 min"""
         subject = "Réinitialisation de votre mot de passe - Santaane"
@@ -486,7 +599,8 @@ class EmailService:
         evaluator_name: str,
         manuscript_title: str,
         manuscript_pdf_url: str,
-        evaluation_deadline: str
+        evaluation_deadline: str,
+        lang: str = "fr"
     ) -> bool:
         """
         Send evaluation request email to an evaluator
@@ -497,62 +611,128 @@ class EmailService:
             manuscript_title: Title of the manuscript
             manuscript_pdf_url: URL to the manuscript PDF
             evaluation_deadline: Deadline for evaluation (formatted date string)
+            lang: Email language (fr/en)
 
         Returns:
             bool: True if sent successfully
         """
-        subject = f"Demande d'évaluation - {manuscript_title}"
+        is_fr = cls._is_french(lang)
+        
+        if is_fr:
+            subject = f"Demande d'évaluation - {manuscript_title[:50]}..."
 
-        content = f"""
-        <div style="color: #333;">
-            <p style="font-size: 18px; margin-bottom: 25px;">
-                Cher(e) Pr. <strong>{evaluator_name}</strong>,
-            </p>
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Cher(e) Pr. <strong>{{evaluator_name}}</strong>,
+                </p>
 
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Nous espérons que vous allez bien.
-            </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous espérons que vous allez bien.
+                </p>
 
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Nous croyons que vous seriez un(e) excellent(e) rapporteur(rice) pour le manuscrit intitulé :
-            </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous croyons que vous seriez un(e) excellent(e) rapporteur(rice) pour le manuscrit intitulé :
+                </p>
 
-            <div style="background: #f8f9fa; border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                <h3 style="margin: 0; color: #59a498;">\u201C{manuscript_title}\u201D</h3>
-                <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
-                    Soumis à la revue <strong>Global Africa</strong>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
+                    <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
+                        Soumis à la revue <strong>Global Africa</strong>
+                    </p>
+                </div>
+
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Les détails du manuscrit ainsi que la grille d'évaluation sont disponibles dans votre espace personnel sur la plateforme.
+                </p>
+
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Se connecter
+                    </a>
+                </div>
+
+                <div style="background: #e8f5f3; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: {cls.PRIMARY_COLOR_DARK};">
+                        <strong>Délai d'évaluation :</strong><br>
+                        En espérant que vous accepterez notre demande, nous souhaiterions recevoir votre évaluation d'ici le <strong>{{evaluation_deadline}}</strong>.
+                    </p>
+                </div>
+
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Dans l'attente de votre retour, veuillez agréer l'expression de notre considération distinguée.
+                </p>
+
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Cordialement,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">L'équipe éditoriale de Global Africa</strong>
                 </p>
             </div>
+            """.format(
+                evaluator_name=evaluator_name,
+                manuscript_title=manuscript_title,
+                evaluation_deadline=evaluation_deadline
+            )
 
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Les détails du manuscrit ainsi que la grille d'évaluation sont disponibles dans votre espace personnel sur la plateforme.
-            </p>
+            body = cls._get_base_template("Demande d'évaluation", content)
+        else:
+            subject = f"Evaluation Request - {manuscript_title[:50]}..."
 
-            <div style="text-align: center; margin: 35px 0;">
-                <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                    Se connecter
-                </a>
-            </div>
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Dear Dr. <strong>{{evaluator_name}}</strong>,
+                </p>
 
-            <div style="background: #e8f5f3; border-left: 4px solid #59a498; padding: 15px; border-radius: 8px; margin: 25px 0;">
-                <p style="margin: 0; font-size: 14px; color: #4a8a7f;">
-                    <strong>Délai d'évaluation :</strong><br>
-                    En espérant que vous accepterez notre demande, nous souhaiterions recevoir votre évaluation d'ici le <strong>{evaluation_deadline}</strong>.
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We hope this message finds you well.
+                </p>
+
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We believe you would be an excellent reviewer for the manuscript entitled:
+                </p>
+
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
+                    <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
+                        Submitted to <strong>Global Africa</strong> journal
+                    </p>
+                </div>
+
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    The manuscript details and evaluation form are available in your personal space on the platform.
+                </p>
+
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Log In
+                    </a>
+                </div>
+
+                <div style="background: #e8f5f3; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: {cls.PRIMARY_COLOR_DARK};">
+                        <strong>Evaluation Deadline:</strong><br>
+                        Should you accept this invitation, we would appreciate receiving your evaluation by <strong>{{evaluation_deadline}}</strong>.
+                    </p>
+                </div>
+
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We look forward to your response and thank you for considering this request.
+                </p>
+
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Best regards,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of Global Africa</strong>
                 </p>
             </div>
+            """.format(
+                evaluator_name=evaluator_name,
+                manuscript_title=manuscript_title,
+                evaluation_deadline=evaluation_deadline
+            )
 
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Dans l'attente de votre retour, veuillez agréer l'expression de notre considération distinguée.
-            </p>
-
-            <p style="font-size: 15px; margin-top: 25px;">
-                Cordialement,<br>
-                <strong style="color: #59a498;">L'équipe éditoriale de Global Africa</strong>
-            </p>
-        </div>
-        """
-
-        body = cls._get_base_template("Demande d'évaluation", content)
+            body = cls._get_base_template("Evaluation Request", content)
+        
         return cls.send_email(to_email, subject, body)
 
     @classmethod
@@ -561,7 +741,8 @@ class EmailService:
         to_email: str,
         evaluator_name: str,
         manuscript_title: str,
-        evaluation_deadline: str
+        evaluation_deadline: str,
+        lang: str = "fr"
     ) -> bool:
         """
         Send evaluation reminder email to an evaluator who hasn't responded
@@ -571,72 +752,134 @@ class EmailService:
             evaluator_name: Evaluator's name
             manuscript_title: Title of the manuscript
             evaluation_deadline: Deadline for evaluation (formatted date string)
+            lang: Email language (fr/en)
 
         Returns:
             bool: True if sent successfully
         """
-        subject = f"Relance - Demande d'évaluation - {manuscript_title}"
+        is_fr = cls._is_french(lang)
+        
+        if is_fr:
+            subject = f"Rappel - Évaluation en attente - {manuscript_title[:50]}..."
 
-        content = f"""
-        <div style="color: #333;">
-            <p style="font-size: 18px; margin-bottom: 25px;">
-                Cher(e) Pr. <strong>{evaluator_name}</strong>,
-            </p>
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Cher(e) Pr. <strong>{{evaluator_name}}</strong>,
+                </p>
 
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Nous espérons que vous allez bien.
-            </p>
+                <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left: 4px solid #ffa000; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #e65100;">
+                        <strong>Rappel : Évaluation en attente</strong>
+                    </p>
+                </div>
 
-            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                <p style="margin: 0; font-size: 16px; color: #856404;">
-                    <strong>Rappel :</strong> Nous vous avons récemment sollicité(e) pour évaluer un manuscrit.
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous n'avons pas encore reçu votre évaluation pour le manuscrit intitulé :
+                </p>
+
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
+                </div>
+
+                <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #ff8f00;">
+                        <strong>Délai d'évaluation :</strong><br>
+                        Nous vous rappelons que la date limite pour soumettre votre évaluation est fixée au <strong>{{evaluation_deadline}}</strong>.
+                    </p>
+                </div>
+
+                    <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Si vous avez déjà soumis votre évaluation, nous vous remercions et veuillez ignorer ce message.
+                </p>
+
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Dans le cas contraire, nous vous serions reconnaissants de bien vouloir procéder à l'évaluation dans les meilleurs délais.
+                </p>
+
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Accéder au manuscrit
+                    </a>
+                </div>
+
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                    Si vous rencontrez des difficultés pour accéder au manuscrit ou pour soumettre votre évaluation, n'hésitez pas à nous contacter.
+                </p>
+
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Cordialement,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">L'équipe éditoriale de Global Africa</strong>
                 </p>
             </div>
+            """.format(
+                evaluator_name=evaluator_name,
+                manuscript_title=manuscript_title,
+                evaluation_deadline=evaluation_deadline
+            )
 
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Nous n'avons pas encore reçu votre réponse concernant la demande d'évaluation du manuscrit intitulé :
-            </p>
+            body = cls._get_base_template("Rappel d'évaluation", content)
+        else:
+            subject = f"Reminder - Pending Evaluation - {manuscript_title[:50]}..."
 
-            <div style="background: #f8f9fa; border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                <h3 style="margin: 0; color: #59a498;">\u201C{manuscript_title}\u201D</h3>
-                <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
-                    Soumis à la revue <strong>Global Africa</strong>
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Dear Dr. <strong>{{evaluator_name}}</strong>,
+                </p>
+
+                <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left: 4px solid #ffa000; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #e65100;">
+                        <strong>Reminder: Pending Evaluation</strong>
+                    </p>
+                </div>
+
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We have not yet received your evaluation for the manuscript entitled:
+                </p>
+
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
+                </div>
+
+                <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #ff8f00;">
+                        <strong>Evaluation Deadline:</strong><br>
+                        We would like to remind you that the deadline for submitting your evaluation is <strong>{{evaluation_deadline}}</strong>.
+                    </p>
+                </div>
+
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    If you have already submitted your evaluation, please accept our thanks and disregard this reminder.
+                </p>
+
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    If not, we would be grateful if you could complete your evaluation at your earliest convenience.
+                </p>
+
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Access Manuscript
+                    </a>
+                </div>
+
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                    If you encounter any difficulties accessing the manuscript or submitting your evaluation, please do not hesitate to contact us.
+                </p>
+
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Best regards,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of Global Africa</strong>
                 </p>
             </div>
+            """.format(
+                evaluator_name=evaluator_name,
+                manuscript_title=manuscript_title,
+                evaluation_deadline=evaluation_deadline
+            )
 
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Nous comprenons que vous soyez très sollicité(e), mais nous aurions besoin de connaître votre disponibilité pour cette évaluation.
-            </p>
-
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Pourriez-vous nous confirmer si vous êtes en mesure d'accepter ou de décliner cette demande d'évaluation ? Vous pouvez accéder à votre espace personnel en cliquant sur le bouton ci-dessous.
-            </p>
-
-            <div style="text-align: center; margin: 35px 0;">
-                <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                    Se connecter
-                </a>
-            </div>
-
-            <div style="background: #e8f5f3; border-left: 4px solid #59a498; padding: 15px; border-radius: 8px; margin: 25px 0;">
-                <p style="margin: 0; font-size: 14px; color: #4a8a7f;">
-                    <strong>Délai d'évaluation :</strong><br>
-                    Si vous acceptez, nous souhaiterions recevoir votre évaluation d'ici le <strong>{evaluation_deadline}</strong>.
-                </p>
-            </div>
-
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Dans l'attente de votre retour, veuillez agréer l'expression de notre considération distinguée.
-            </p>
-
-            <p style="font-size: 15px; margin-top: 25px;">
-                Cordialement,<br>
-                <strong style="color: #59a498;">L'équipe éditoriale de Global Africa</strong>
-            </p>
-        </div>
-        """
-
-        body = cls._get_base_template("Relance - Demande d'évaluation", content)
+            body = cls._get_base_template("Evaluation Reminder", content)
+            
         return cls.send_email(to_email, subject, body)
 
     # ==========================================
@@ -649,53 +892,119 @@ class EmailService:
         to_email: str,
         author_name: str,
         manuscript_title: str,
-        manuscript_id: int
+        manuscript_id: int,
+        lang: str = "fr"
     ) -> bool:
-        """Envoie un email à l'auteur quand son manuscrit est accepté"""
-        subject = f"Manuscrit accepté - {manuscript_title}"
+        """
+        Envoie un email à l'auteur quand son manuscrit est accepté
         
-        content = f"""
-        <div style="color: #333;">
-            <p style="font-size: 18px; margin-bottom: 25px;">
-                Cher(e) <strong>{author_name}</strong>,
-            </p>
+        Args:
+            to_email: Email du destinataire
+            author_name: Nom de l'auteur
+            manuscript_title: Titre du manuscrit
+            manuscript_id: ID du manuscrit
+            lang: Langue de l'email (fr/en)
             
-            <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-                <p style="margin: 0; font-size: 16px; color: #2e7d32;">
-                    <strong>Bonne nouvelle !</strong> Votre manuscrit a été accepté.
+        Returns:
+            bool: True si l'email a été envoyé avec succès
+        """
+        is_fr = cls._is_french(lang)
+        
+        if is_fr:
+            subject = f"Manuscrit accepté - {manuscript_title[:50]}..."
+            
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Cher(e) <strong>{author_name}</strong>,
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #2e7d32;">
+                        <strong>Bonne nouvelle !</strong> Votre manuscrit a été accepté.
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous avons le plaisir de vous informer que votre manuscrit intitulé :
+                </p>
+                
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">"{manuscript_title}"</h3>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    a été <strong>accepté</strong> pour publication dans la revue <strong>Global Africa</strong>.
+                </p>
+                
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 12px; margin: 30px 0;">
+                    <p style="margin: 0; font-size: 15px; color: #856404;">
+                        <strong>Action requise :</strong> Pour finaliser le processus de mise en page, nous vous prions de bien vouloir charger la <strong>version finale au format Word (.docx)</strong> via votre tableau de bord.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Téléverser la version finale
+                    </a>
+                </div>
+                
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Cordialement,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">L'équipe éditoriale de Global Africa</strong>
                 </p>
             </div>
+            """
             
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Nous avons le plaisir de vous informer que votre manuscrit intitulé :
-            </p>
+            body = cls._get_base_template("Manuscrit Accepté", content)
+        else:
+            subject = f"Manuscript Accepted - {manuscript_title[:50]}..."
             
-            <div style="background: #f8f9fa; border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                <h3 style="margin: 0; color: #59a498;">"{manuscript_title}"</h3>
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Dear <strong>{author_name}</strong>,
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #2e7d32;">
+                        <strong>Great news!</strong> Your manuscript has been accepted.
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We are pleased to inform you that your manuscript entitled:
+                </p>
+                
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">"{manuscript_title}"</h3>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    has been <strong>accepted</strong> for publication in the <strong>Global Africa</strong> journal.
+                </p>
+                
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 12px; margin: 30px 0;">
+                    <p style="margin: 0; font-size: 15px; color: #856404;">
+                        <strong>Action required:</strong> To finalize the layout process, please upload the <strong>final version in Word format (.docx)</strong> via your dashboard.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Upload Final Version
+                    </a>
+                </div>
+                
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Best regards,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of Global Africa</strong>
+                </p>
             </div>
+            """
             
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                a été <strong>accepté</strong> pour publication dans la revue <strong>Global Africa</strong>.
-            </p>
-            
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Notre équipe éditoriale vous contactera prochainement pour les prochaines étapes du processus de publication.
-            </p>
-            
-            <div style="text-align: center; margin: 35px 0;">
-                <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                    Voir mon manuscrit
-                </a>
-            </div>
-            
-            <p style="font-size: 15px; margin-top: 25px;">
-                Cordialement,<br>
-                <strong style="color: #59a498;">L'équipe éditoriale de Global Africa</strong>
-            </p>
-        </div>
-        """
+            body = cls._get_base_template("Manuscript Accepted", content)
         
-        body = cls._get_base_template("Manuscrit Accepté", content)
         return cls.send_email(to_email, subject, body)
 
     @classmethod
@@ -705,58 +1014,146 @@ class EmailService:
         author_name: str,
         manuscript_title: str,
         manuscript_id: int,
-        rejection_reason: str = None
+        rejection_reason: str = None,
+        lang: str = "fr"
     ) -> bool:
-        """Envoie un email à l'auteur quand son manuscrit est refusé"""
-        subject = f"Décision concernant votre manuscrit - {manuscript_title}"
-        
-        reason_section = ""
-        if rejection_reason:
-            reason_section = f"""
-            <div style="background: #f8f9fa; border-left: 4px solid #dc3545; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                <h4 style="margin: 0 0 10px 0; color: #dc3545;">Motif de la décision :</h4>
-                <p style="margin: 0; font-size: 14px; color: #555;">{rejection_reason}</p>
-            </div>
-            """
-        
-        content = f"""
-        <div style="color: #333;">
-            <p style="font-size: 18px; margin-bottom: 25px;">
-                Cher(e) <strong>{author_name}</strong>,
-            </p>
-            
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Nous avons examiné attentivement votre manuscrit intitulé :
-            </p>
-            
-            <div style="background: #f8f9fa; border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                <h3 style="margin: 0; color: #59a498;">"{manuscript_title}"</h3>
-            </div>
-            
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Après analyse approfondie par notre comité éditorial, nous avons le regret de vous informer que votre manuscrit <strong>n'a pas été retenu</strong> pour publication dans la revue Global Africa.
-            </p>
-            
-            {reason_section}
-            
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Cette décision ne remet pas en cause la qualité de votre travail. Nous vous encourageons à poursuivre vos recherches et à soumettre de nouveaux travaux à l'avenir.
-            </p>
-            
-            <div style="text-align: center; margin: 35px 0;">
-                <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                    Voir les détails
-                </a>
-            </div>
-            
-            <p style="font-size: 15px; margin-top: 25px;">
-                Cordialement,<br>
-                <strong style="color: #59a498;">L'équipe éditoriale de Global Africa</strong>
-            </p>
-        </div>
         """
+        Envoie un email à l'auteur quand son manuscrit est refusé
         
-        body = cls._get_base_template("Décision Éditoriale", content)
+        Args:
+            to_email: Email du destinataire
+            author_name: Nom de l'auteur
+            manuscript_title: Titre du manuscrit
+            manuscript_id: ID du manuscrit
+            rejection_reason: Raison du rejet (optionnel)
+            lang: Langue de l'email (fr/en)
+            
+        Returns:
+            bool: True si l'email a été envoyé avec succès
+        """
+        is_fr = cls._is_french(lang)
+        
+        if is_fr:
+            subject = f"Décision concernant votre manuscrit - {manuscript_title[:50]}..."
+            
+            reason_section = ""
+            if rejection_reason:
+                reason_section = f"""
+                <div style="background: #f8f9fa; border-left: 4px solid #dc3545; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h4 style="margin: 0 0 10px 0; color: #dc3545;">Motif de la décision :</h4>
+                    <p style="margin: 0; font-size: 14px; color: #555;">{rejection_reason}</p>
+                </div>
+                """
+            
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Cher(e) <strong>{{author_name}}</strong>,
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #fde8e8 0%, #fad4d4 100%); border-left: 4px solid #dc3545; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #dc3545;">
+                        <strong>Décision éditoriale</strong> - Votre manuscrit n'a pas été retenu
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous avons examiné attentivement votre manuscrit intitulé :
+                </p>
+                
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">"{{manuscript_title}}"</h3>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Après analyse approfondie par notre comité éditorial, nous avons le regret de vous informer que votre manuscrit <strong>n'a pas été retenu</strong> pour publication dans la revue Global Africa.
+                </p>
+                
+                {reason_section}
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Cette décision ne remet pas en cause la qualité de votre travail. Nous vous encourageons à poursuivre vos recherches et à soumettre de nouveaux travaux à l'avenir.
+                </p>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{{manuscript_id}}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Voir les détails
+                    </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                    Nous vous remercions de l'intérêt que vous portez à notre revue.
+                </p>
+                
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Cordialement,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">L'équipe éditoriale de Global Africa</strong>
+                </p>
+            </div>
+            """.format(author_name=author_name, manuscript_title=manuscript_title, manuscript_id=manuscript_id)
+            
+            body = cls._get_base_template("Décision Éditoriale", content)
+        else:
+            subject = f"Editorial Decision - {manuscript_title[:50]}..."
+            
+            reason_section = ""
+            if rejection_reason:
+                reason_section = f"""
+                <div style="background: #f8f9fa; border-left: 4px solid #dc3545; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h4 style="margin: 0 0 10px 0; color: #dc3545;">Decision Details:</h4>
+                    <p style="margin: 0; font-size: 14px; color: #555;">{rejection_reason}</p>
+                </div>
+                """
+            
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Dear <strong>{{author_name}}</strong>,
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #fde8e8 0%, #fad4d4 100%); border-left: 4px solid #dc3545; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #dc3545;">
+                        <strong>Editorial Decision</strong> - Your manuscript has not been accepted
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We have carefully reviewed your manuscript entitled:
+                </p>
+                
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">"{{manuscript_title}}"</h3>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    After thorough consideration by our editorial board, we regret to inform you that your manuscript has <strong>not been accepted</strong> for publication in the Global Africa journal.
+                </p>
+                
+                {reason_section}
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    This decision does not reflect on the quality of your work. We encourage you to continue your research and submit future work for our consideration.
+                </p>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{{manuscript_id}}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        View Details
+                    </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                    Thank you for your interest in our journal.
+                </p>
+                
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Sincerely,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of Global Africa</strong>
+                </p>
+            </div>
+            """.format(author_name=author_name, manuscript_title=manuscript_title, manuscript_id=manuscript_id)
+            
+            body = cls._get_base_template("Editorial Decision", content)
+        
         return cls.send_email(to_email, subject, body)
 
     @classmethod
@@ -766,59 +1163,137 @@ class EmailService:
         author_name: str,
         manuscript_title: str,
         manuscript_id: int,
-        publication_url: str = None
+        publication_url: str = None,
+        lang: str = "fr"
     ) -> bool:
-        """Envoie un email à l'auteur quand son manuscrit est publié"""
-        subject = f"Publication de votre article - {manuscript_title}"
+        """
+        Envoie un email à l'auteur quand son manuscrit est publié
         
+        Args:
+            to_email: Email du destinataire
+            author_name: Nom de l'auteur
+            manuscript_title: Titre du manuscrit
+            manuscript_id: ID du manuscrit
+            publication_url: URL de publication (optionnel)
+            lang: Langue de l'email (fr/en)
+            
+        Returns:
+            bool: True si l'email a été envoyé avec succès
+        """
+        is_fr = cls._is_french(lang)
         publication_link = publication_url or f"{cls.PLATFORM_URL}/publications/{manuscript_id}"
         
-        content = f"""
-        <div style="color: #333;">
-            <p style="font-size: 18px; margin-bottom: 25px;">
-                Cher(e) <strong>{author_name}</strong>,
-            </p>
+        if is_fr:
+            subject = f"Publication de votre article - {manuscript_title[:50]}..."
             
-            <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-                <p style="margin: 0; font-size: 16px; color: #2e7d32;">
-                    <strong>Félicitations !</strong> Votre article est maintenant publié.
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Cher(e) <strong>{{author_name}}</strong>,
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #2e7d32;">
+                        <strong>Félicitations !</strong> Votre article est maintenant publié.
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous avons le plaisir de vous annoncer que votre article intitulé :
+                </p>
+                
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">"{{manuscript_title}}"</h3>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    est désormais <strong>publié</strong> et accessible au public dans la revue <strong>Global Africa</strong>.
+                </p>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Vous pouvez partager ce lien avec vos collègues et sur vos réseaux professionnels :
+                </p>
+                
+                <div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 20px 0; word-break: break-all;">
+                    <a href="{publication_link}" style="color: {cls.PRIMARY_COLOR}; text-decoration: none;">
+                        {publication_link}
+                    </a>
+                </div>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{publication_link}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Voir ma publication
+                    </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                    Merci pour votre contribution à la recherche scientifique africaine.
+                </p>
+                
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Cordialement,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">L'équipe éditoriale de Global Africa</strong>
                 </p>
             </div>
+            """.format(author_name=author_name, manuscript_title=manuscript_title)
             
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Nous avons le plaisir de vous annoncer que votre article intitulé :
-            </p>
+            body = cls._get_base_template("Article Publié", content)
+        else:
+            subject = f"Your Article Has Been Published - {manuscript_title[:50]}..."
             
-            <div style="background: #f8f9fa; border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                <h3 style="margin: 0; color: #59a498;">"{manuscript_title}"</h3>
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Dear <strong>{{author_name}}</strong>,
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #2e7d32;">
+                        <strong>Congratulations!</strong> Your article has been published.
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We are pleased to inform you that your article entitled:
+                </p>
+                
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">"{{manuscript_title}}"</h3>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    has been <strong>published</strong> and is now publicly available in the <strong>Global Africa</strong> journal.
+                </p>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    You can share this link with your colleagues and on your professional networks:
+                </p>
+                
+                <div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 20px 0; word-break: break-all;">
+                    <a href="{publication_link}" style="color: {cls.PRIMARY_COLOR}; text-decoration: none;">
+                        {publication_link}
+                    </a>
+                </div>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{publication_link}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        View Publication
+                    </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                    Thank you for contributing to African scientific research.
+                </p>
+                
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Best regards,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of Global Africa</strong>
+                </p>
             </div>
+            """.format(author_name=author_name, manuscript_title=manuscript_title)
             
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                est désormais <strong>publié</strong> et accessible au public dans la revue <strong>Global Africa</strong>.
-            </p>
-            
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Vous pouvez partager ce lien avec vos collègues et sur vos réseaux professionnels.
-            </p>
-            
-            <div style="text-align: center; margin: 35px 0;">
-                <a href="{publication_link}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                    Voir ma publication
-                </a>
-            </div>
-            
-            <p style="font-size: 14px; color: #666; margin-top: 30px;">
-                Merci pour votre contribution à la recherche scientifique africaine.
-            </p>
-            
-            <p style="font-size: 15px; margin-top: 25px;">
-                Cordialement,<br>
-                <strong style="color: #59a498;">L'équipe éditoriale de Global Africa</strong>
-            </p>
-        </div>
-        """
+            body = cls._get_base_template("Article Published", content)
         
-        body = cls._get_base_template("Article Publié", content)
         return cls.send_email(to_email, subject, body)
 
     @classmethod
@@ -828,64 +1303,146 @@ class EmailService:
         author_name: str,
         manuscript_title: str,
         manuscript_id: int,
-        revision_comments: str = None
+        revision_comments: str = None,
+        lang: str = "fr"
     ) -> bool:
-        """Envoie un email à l'auteur quand une révision est demandée"""
-        subject = f"Révision demandée - {manuscript_title}"
+        """
+        Envoie un email à l'auteur quand une révision est demandée
         
-        comments_section = ""
-        if revision_comments:
-            comments_section = f"""
-            <div style="background: #f8f9fa; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                <h4 style="margin: 0 0 10px 0; color: #856404;">Commentaires de l'éditeur :</h4>
-                <p style="margin: 0; font-size: 14px; color: #555; white-space: pre-line;">{revision_comments}</p>
-            </div>
-            """
-        
-        content = f"""
-        <div style="color: #333;">
-            <p style="font-size: 18px; margin-bottom: 25px;">
-                Cher(e) <strong>{author_name}</strong>,
-            </p>
+        Args:
+            to_email: Email du destinataire
+            author_name: Nom de l'auteur
+            manuscript_title: Titre du manuscrit
+            manuscript_id: ID du manuscrit
+            revision_comments: Commentaires des évaluateurs (optionnel)
+            lang: Langue de l'email (fr/en)
             
-            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-                <p style="margin: 0; font-size: 16px; color: #856404;">
-                    <strong>Révision demandée</strong> pour votre manuscrit.
+        Returns:
+            bool: True si l'email a été envoyé avec succès
+        """
+        is_fr = cls._is_french(lang)
+        
+        if is_fr:
+            subject = f"Révision demandée - {manuscript_title[:50]}..."
+            
+            comments_section = ""
+            if revision_comments:
+                comments_section = f"""
+                <div style="background: #f8f9fa; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h4 style="margin: 0 0 10px 0; color: #ff9800;">Commentaires des évaluateurs :</h4>
+                    <div style="font-size: 14px; color: #555; white-space: pre-line;">{revision_comments}</div>
+                </div>
+                """
+            
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Cher(e) <strong>{{author_name}}</strong>,
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%); border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #ff8f00;">
+                        <strong>Révision demandée</strong> - Des modifications sont nécessaires
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous avons examiné votre manuscrit intitulé :
+                </p>
+                
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">"{{manuscript_title}}"</h3>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Le comité éditorial a évalué votre travail et a décidé que des <strong>modifications sont nécessaires</strong> avant que le manuscrit ne puisse être accepté pour publication.
+                </p>
+                
+                {comments_section}
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Veuillez prendre en compte les commentaires des évaluateurs et soumettre une version révisée de votre manuscrit.
+                </p>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{{manuscript_id}}/revise" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Soumettre une révision
+                    </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                    Vous pouvez consulter les commentaires détaillés et soumettre votre révision en cliquant sur le bouton ci-dessus ou en vous connectant à votre espace auteur.
+                </p>
+                
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Cordialement,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">L'équipe éditoriale de Global Africa</strong>
                 </p>
             </div>
+            """.format(author_name=author_name, manuscript_title=manuscript_title, manuscript_id=manuscript_id)
             
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Après examen de votre manuscrit intitulé :
-            </p>
+            body = cls._get_base_template("Révision Demandée", content)
+        else:
+            subject = f"Revisions Requested - {manuscript_title[:50]}..."
             
-            <div style="background: #f8f9fa; border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                <h3 style="margin: 0; color: #59a498;">"{manuscript_title}"</h3>
+            comments_section = ""
+            if revision_comments:
+                comments_section = f"""
+                <div style="background: #f8f9fa; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h4 style="margin: 0 0 10px 0; color: #ff9800;">Reviewer Comments:</h4>
+                    <div style="font-size: 14px; color: #555; white-space: pre-line;">{revision_comments}</div>
+                </div>
+                """
+            
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Dear <strong>{{author_name}}</strong>,
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%); border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #ff8f00;">
+                        <strong>Revisions Requested</strong> - Modifications Required
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We have reviewed your manuscript entitled:
+                </p>
+                
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">"{{manuscript_title}}"</h3>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    The editorial board has evaluated your work and determined that <strong>revisions are required</strong> before the manuscript can be accepted for publication.
+                </p>
+                
+                {comments_section}
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Please address the reviewers' comments and submit a revised version of your manuscript.
+                </p>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{{manuscript_id}}/revise" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Submit Revision
+                    </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                    You can view the detailed comments and submit your revision by clicking the button above or by logging into your author dashboard.
+                </p>
+                
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Sincerely,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of Global Africa</strong>
+                </p>
             </div>
+            """.format(author_name=author_name, manuscript_title=manuscript_title, manuscript_id=manuscript_id)
             
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Notre comité éditorial souhaite que vous apportiez quelques <strong>modifications</strong> avant de pouvoir poursuivre le processus de publication.
-            </p>
-            
-            {comments_section}
-            
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Veuillez effectuer les révisions demandées et soumettre à nouveau votre manuscrit via la plateforme.
-            </p>
-            
-            <div style="text-align: center; margin: 35px 0;">
-                <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}/edit" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                    Réviser mon manuscrit
-                </a>
-            </div>
-            
-            <p style="font-size: 15px; margin-top: 25px;">
-                Cordialement,<br>
-                <strong style="color: #59a498;">L'équipe éditoriale de Global Africa</strong>
-            </p>
-        </div>
-        """
+            body = cls._get_base_template("Revisions Requested", content)
         
-        body = cls._get_base_template("Révision Demandée", content)
         return cls.send_email(to_email, subject, body)
 
     # ==========================================
@@ -1040,61 +1597,132 @@ class EmailService:
         manuscript_title: str,
         author_name: str,
         author_email: str,
-        revision_number: int = 1
+        revision_number: int = 1,
+        lang: str = "fr"
     ) -> bool:
-        """Envoie une notification au système quand un auteur re-soumet son manuscrit après révision"""
-        subject = f"Re-soumission - {manuscript_title[:50]}..."
-        
-        content = f"""
-        <div style="color: #333;">
-            <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-                <p style="margin: 0; font-size: 16px; color: #4a8a7f;">
-                    <strong>Manuscrit révisé re-soumis</strong>
-                </p>
-            </div>
-            
-            <p style="font-size: 15px; margin-bottom: 20px;">
-                Un auteur a re-soumis son manuscrit après révision.
-            </p>
-            
-            <table style="width: 100%; border-collapse: collapse; margin: 25px 0;">
-                <tr>
-                    <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold; width: 30%;">ID Manuscrit</td>
-                    <td style="padding: 12px; border: 1px solid #ddd;">#{manuscript_id}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Titre</td>
-                    <td style="padding: 12px; border: 1px solid #ddd;"><strong>{manuscript_title}</strong></td>
-                </tr>
-                <tr>
-                    <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Auteur</td>
-                    <td style="padding: 12px; border: 1px solid #ddd;">{author_name} ({author_email})</td>
-                </tr>
-                <tr>
-                    <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Version</td>
-                    <td style="padding: 12px; border: 1px solid #ddd;">Révision #{revision_number}</td>
-                </tr>
-            </table>
-            
-            <div style="background: #e8f5f3; border-left: 4px solid #59a498; padding: 15px; border-radius: 8px; margin: 25px 0;">
-                <p style="margin: 0; font-size: 14px; color: #4a8a7f;">
-                    <strong>Action requise :</strong> Veuillez examiner les modifications apportées par l'auteur.
-                </p>
-            </div>
-            
-            <div style="text-align: center; margin: 35px 0;">
-                <a href="{cls.PLATFORM_URL}/dashboard/editor/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                    Voir le manuscrit révisé
-                </a>
-            </div>
-            
-            <p style="font-size: 13px; color: #888; margin-top: 30px; text-align: center;">
-                Cet email a été envoyé automatiquement suite à une re-soumission.
-            </p>
-        </div>
         """
+        Envoie une notification au système quand un auteur re-soumet son manuscrit après révision
         
-        body = cls._get_base_template("Manuscrit Révisé", content)
+        Args:
+            manuscript_id: ID du manuscrit
+            manuscript_title: Titre du manuscrit
+            author_name: Nom de l'auteur
+            author_email: Email de l'auteur
+            revision_number: Numéro de la révision (par défaut: 1)
+            lang: Langue de l'email (fr/en)
+            
+        Returns:
+            bool: True si l'email a été envoyé avec succès
+        """
+        is_fr = cls._is_french(lang)
+        
+        if is_fr:
+            subject = f"Re-soumission - {manuscript_title[:50]}..."
+            
+            content = f"""
+            <div style="color: #333;">
+                <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: {cls.PRIMARY_COLOR_DARK};">
+                        <strong>Manuscrit révisé re-soumis</strong>
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; margin-bottom: 20px;">
+                    Un auteur a re-soumis son manuscrit après révision.
+                </p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin: 25px 0;">
+                    <tr>
+                        <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold; width: 30%;">ID Manuscrit</td>
+                        <td style="padding: 12px; border: 1px solid #ddd;">#{manuscript_id}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Titre</td>
+                        <td style="padding: 12px; border: 1px solid #ddd;"><strong>{manuscript_title}</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Auteur</td>
+                        <td style="padding: 12px; border: 1px solid #ddd;">{author_name} ({author_email})</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Version</td>
+                        <td style="padding: 12px; border: 1px solid #ddd;">Révision #{revision_number}</td>
+                    </tr>
+                </table>
+                
+                <div style="background: #e8f5f3; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: {cls.PRIMARY_COLOR_DARK};">
+                        <strong>Action requise :</strong> Veuillez examiner les modifications apportées par l'auteur.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/dashboard/editor/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Voir le manuscrit révisé
+                    </a>
+                </div>
+                
+                <p style="font-size: 13px; color: #888; margin-top: 30px; text-align: center;">
+                    Cet email a été envoyé automatiquement suite à une re-soumission.
+                </p>
+            </div>
+            """
+            
+            body = cls._get_base_template("Manuscrit Révisé", content)
+        else:
+            subject = f"Resubmission - {manuscript_title[:50]}..."
+            
+            content = f"""
+            <div style="color: #333;">
+                <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: {cls.PRIMARY_COLOR_DARK};">
+                        <strong>Revised Manuscript Resubmitted</strong>
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; margin-bottom: 20px;">
+                    An author has resubmitted their manuscript after revision.
+                </p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin: 25px 0;">
+                    <tr>
+                        <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold; width: 30%;">Manuscript ID</td>
+                        <td style="padding: 12px; border: 1px solid #ddd;">#{manuscript_id}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Title</td>
+                        <td style="padding: 12px; border: 1px solid #ddd;"><strong>{manuscript_title}</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Author</td>
+                        <td style="padding: 12px; border: 1px solid #ddd;">{author_name} ({author_email})</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; background: #f5f5f5; border: 1px solid #ddd; font-weight: bold;">Version</td>
+                        <td style="padding: 12px; border: 1px solid #ddd;">Revision #{revision_number}</td>
+                    </tr>
+                </table>
+                
+                <div style="background: #e8f5f3; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: {cls.PRIMARY_COLOR_DARK};">
+                        <strong>Action Required:</strong> Please review the changes made by the author.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/dashboard/editor/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        View Revised Manuscript
+                    </a>
+                </div>
+                
+                <p style="font-size: 13px; color: #888; margin-top: 30px; text-align: center;">
+                    This email was automatically sent after a resubmission.
+                </p>
+            </div>
+            """
+            
+            body = cls._get_base_template("Revised Manuscript", content)
+        
         return cls.send_email(cls.FROM_EMAIL, subject, body)
 
     @classmethod
@@ -1103,62 +1731,135 @@ class EmailService:
         to_email: str,
         author_name: str,
         manuscript_title: str,
-        manuscript_id: int
+        manuscript_id: int,
+        lang: str = "fr"
     ) -> bool:
-        """Envoie un email de confirmation à l'auteur après soumission de son manuscrit"""
-        subject = f"Confirmation de soumission - {manuscript_title[:50]}..."
-        
-        content = f"""
-        <div style="color: #333;">
-            <p style="font-size: 18px; margin-bottom: 25px;">
-                Cher(e) <strong>{author_name}</strong>,
-            </p>
-            
-            <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-                <p style="margin: 0; font-size: 16px; color: #2e7d32;">
-                    <strong>Votre manuscrit a bien été soumis !</strong>
-                </p>
-            </div>
-            
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Nous avons bien reçu votre manuscrit intitulé :
-            </p>
-            
-            <div style="background: #f8f9fa; border-left: 4px solid #59a498; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                <h3 style="margin: 0; color: #59a498;">"{manuscript_title}"</h3>
-                <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
-                    Référence : #{manuscript_id}
-                </p>
-            </div>
-            
-            <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Votre soumission est maintenant en cours de traitement par notre équipe éditoriale. Vous serez notifié(e) par email à chaque étape importante du processus d'évaluation.
-            </p>
-            
-            <h4 style="color: #59a498; margin-top: 25px; margin-bottom: 15px;">Prochaines étapes :</h4>
-            <ul style="font-size: 14px; line-height: 1.8; color: #555; padding-left: 20px;">
-                <li>Vérification initiale par l'équipe éditoriale</li>
-                <li>Attribution à des évaluateurs experts</li>
-                <li>Processus d'évaluation par les pairs</li>
-                <li>Décision éditoriale finale</li>
-            </ul>
-            
-            <div style="text-align: center; margin: 35px 0;">
-                <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                    Suivre mon manuscrit
-                </a>
-            </div>
-            
-            <p style="font-size: 14px; color: #666; margin-top: 30px;">
-                Merci pour votre confiance et votre contribution à la recherche scientifique.
-            </p>
-            
-            <p style="font-size: 15px; margin-top: 25px;">
-                Cordialement,<br>
-                <strong style="color: #59a498;">L'équipe éditoriale de Global Africa</strong>
-            </p>
-        </div>
         """
+        Envoie un email de confirmation à l'auteur après soumission de son manuscrit
         
-        body = cls._get_base_template("Soumission Confirmée", content)
+        Args:
+            to_email: Email du destinataire
+            author_name: Nom de l'auteur
+            manuscript_title: Titre du manuscrit
+            manuscript_id: ID du manuscrit
+            lang: Langue de l'email (fr/en)
+            
+        Returns:
+            bool: True si l'email a été envoyé avec succès
+        """
+        is_fr = cls._is_french(lang)
+        
+        if is_fr:
+            subject = f"Confirmation de soumission - {manuscript_title[:50]}..."
+            
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Cher(e) <strong>{author_name}</strong>,
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #2e7d32;">
+                        <strong>Votre manuscrit a bien été soumis !</strong>
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous avons bien reçu votre manuscrit intitulé :
+                </p>
+                
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">"{manuscript_title}"</h3>
+                    <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
+                        Référence : #{manuscript_id}
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Votre soumission est maintenant en cours de traitement par notre équipe éditoriale. Vous serez notifié(e) par email à chaque étape importante du processus d'évaluation.
+                </p>
+                
+                <h4 style="color: {cls.PRIMARY_COLOR}; margin-top: 25px; margin-bottom: 15px;">Prochaines étapes :</h4>
+                <ul style="font-size: 14px; line-height: 1.8; color: #555; padding-left: 20px;">
+                    <li>Vérification initiale par l'équipe éditoriale</li>
+                    <li>Attribution à des évaluateurs experts</li>
+                    <li>Processus d'évaluation par les pairs</li>
+                    <li>Décision éditoriale finale</li>
+                </ul>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Suivre mon manuscrit
+                    </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                    Merci pour votre confiance et votre contribution à la recherche scientifique.
+                </p>
+                
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Cordialement,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">L'équipe éditoriale de Global Africa</strong>
+                </p>
+            </div>
+            """
+            
+            body = cls._get_base_template("Soumission Confirmée", content)
+        else:
+            subject = f"Submission Confirmation - {manuscript_title[:50]}..."
+            
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Dear <strong>{author_name}</strong>,
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px; color: #2e7d32;">
+                        <strong>Your manuscript has been successfully submitted!</strong>
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We have received your manuscript titled:
+                </p>
+                
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">"{manuscript_title}"</h3>
+                    <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
+                        Reference: #{manuscript_id}
+                    </p>
+                </div>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Your submission is now being processed by our editorial team. You will be notified by email at each important stage of the evaluation process.
+                </p>
+                
+                <h4 style="color: {cls.PRIMARY_COLOR}; margin-top: 25px; margin-bottom: 15px;">Next Steps:</h4>
+                <ul style="font-size: 14px; line-height: 1.8; color: #555; padding-left: 20px;">
+                    <li>Initial review by the editorial team</li>
+                    <li>Assignment to expert reviewers</li>
+                    <li>Peer review process</li>
+                    <li>Final editorial decision</li>
+                </ul>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Track My Manuscript
+                    </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                    Thank you for your trust and your contribution to scientific research.
+                </p>
+                
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Best regards,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of Global Africa</strong>
+                </p>
+            </div>
+            """
+            
+            body = cls._get_base_template("Submission Confirmed", content)
+            
         return cls.send_email(to_email, subject, body)
