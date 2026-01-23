@@ -20,6 +20,8 @@ class UserBase(BaseSchema):
 class UserCreate(UserBase):
     """Schema for creating a new user."""
     password: str = Field(..., min_length=8, max_length=100, description="User password")
+    role_ids: Optional[List[int]] = Field(default=[], alias="roleIds", description="List of role IDs to assign to the user")
+    role_id: Optional[int] = Field(default=None, alias="roleId", description="Single role ID to assign to the user (backward compatibility)")
 
 
 class EvaluatorCreate(BaseSchema):
@@ -32,12 +34,21 @@ class EvaluatorCreate(BaseSchema):
     institution: Optional[str] = Field(None, max_length=255, description="Institution name")
 
 
+class UserRoleUpdate(BaseSchema):
+    """Schema for updating user roles."""
+    role_ids: List[int] = Field(..., min_items=1, description="List of role IDs to assign to the user", alias="roleIds")
+
+
 class UserUpdate(BaseSchema):
     """Schema for updating an existing user."""
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = Field(None, min_length=1, max_length=150, alias="fullName")
-    profile_photo: Optional[str] = Field(None, max_length=255, alias="profilePhoto")
-    orcid_id: Optional[str] = Field(None, max_length=50, alias="orcidId")
+    email: Optional[EmailStr] = Field(None, description="Updated email address")
+    full_name: Optional[str] = Field(None, min_length=1, max_length=150, description="Updated full name", alias="fullName")
+    profile_photo: Optional[str] = Field(None, max_length=255, description="Profile photo URL", alias="profilePhoto")
+    orcid_id: Optional[str] = Field(None, max_length=50, description="Updated ORCID identifier", alias="orcidId")
+    bio: Optional[str] = Field(None, max_length=1000, description="Updated biography")
+    position: Optional[str] = Field(None, max_length=200, description="Updated position")
+    institution: Optional[str] = Field(None, max_length=300, description="Updated institution")
+    role_ids: Optional[List[int]] = Field(default=None, alias="roleIds", description="List of role IDs to assign to the user")
 
 
 class ProfileUpdate(BaseSchema):

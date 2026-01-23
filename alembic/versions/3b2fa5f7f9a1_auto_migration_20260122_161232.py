@@ -1,8 +1,8 @@
-"""auto_migration_20260112_195044
+"""auto_migration_20260122_161232
 
-Revision ID: c77ac1e477f8
+Revision ID: 3b2fa5f7f9a1
 Revises: 
-Create Date: 2026-01-12 19:50:46.408256
+Create Date: 2026-01-22 16:12:35.354023
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'c77ac1e477f8'
+revision: str = '3b2fa5f7f9a1'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

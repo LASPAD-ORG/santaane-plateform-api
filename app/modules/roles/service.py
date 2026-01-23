@@ -182,6 +182,34 @@ class RoleService:
         )
 
         logger.info(f"Role assigned successfully")
+        
+        # Send notification email if user and assigned_by are different
+        if user and assigned_by and assign_data.userId != assigned_by:
+            from app.core.email import EmailService
+            from app.modules.users.repository import UserRepository
+            
+            # Get current user info
+            user_repo = UserRepository(self.repository.db)
+            current_user = await user_repo.get_by_id(assigned_by)
+            
+            # Get updated roles list
+            updated_roles = []
+            user_with_roles = await user_repo.get_with_roles(assign_data.userId)
+            if hasattr(user_with_roles, 'user_roles') and user_with_roles.user_roles:
+                updated_roles = [
+                    ur.role.name
+                    for ur in user_with_roles.user_roles
+                    if ur.role and ur.role.name
+                ]
+            
+            if current_user:
+                EmailService.send_User_update(
+                    to_email=user.email,
+                    full_name=user.full_name,
+                    updated_fields={'roles': updated_roles},
+                    admin_name=current_user.full_name
+                )
+                logger.info(f"Role assignment notification sent to {user.email}")
 
         return UserRoleResponse(
             id=user_role.id,
@@ -192,7 +220,7 @@ class RoleService:
             assignedAt=user_role.assigned_at
         )
 
-    async def remove_role_from_user(self, user_id: int, role_id: int):
+    async def remove_role_from_user(self, user_id: int, role_id: int, current_user_id: int = None):
         """Remove a role from a user"""
         logger.info(f"Removing role {role_id} from user {user_id}")
 
@@ -204,9 +232,45 @@ class RoleService:
                 detail=RoleErrorCode.USER_DOES_NOT_HAVE_ROLE
             )
 
+        # Get user and role info for notification
+        from app.modules.users.repository import UserRepository
+        user_repo = UserRepository(self.repository.db)
+        user = await user_repo.get_by_id(user_id)
+        role = await self.repository.get_by_id(role_id)
+        
+        # Get updated roles list after removal
+        updated_roles = []
+        user_with_roles = await user_repo.get_with_roles(user_id)
+        if hasattr(user_with_roles, 'user_roles') and user_with_roles.user_roles:
+            # Get roles BEFORE removal
+            all_roles = [
+                ur.role.name
+                for ur in user_with_roles.user_roles
+                if ur.role and ur.role.name and ur.role_id != role_id
+            ]
+            updated_roles = all_roles
+
         await self.repository.remove_role_from_user(user_id, role_id)
 
         logger.info(f"Role removed successfully")
+        
+        # Send notification email if user and current_user are different
+        if user and current_user_id and user_id != current_user_id:
+            from app.core.email import EmailService
+            from app.modules.users.repository import UserRepository as UserRepo
+            
+            # Get current user info
+            current_user_repo = UserRepo(self.repository.db)
+            current_user = await current_user_repo.get_by_id(current_user_id)
+            
+            if current_user:
+                EmailService.send_User_update(
+                    to_email=user.email,
+                    full_name=user.full_name,
+                    updated_fields={'roles': updated_roles},
+                    admin_name=current_user.full_name
+                )
+                logger.info(f"Role removal notification sent to {user.email}")
 
     async def get_user_roles(self, user_id: int) -> list[UserRoleResponse]:
         """Get all roles for a user"""

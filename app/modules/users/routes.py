@@ -10,6 +10,7 @@ from app.modules.users.utils import get_user_service
 from app.modules.users.schemas import (
     UserCreate,
     UserUpdate,
+    UserRoleUpdate,
     ProfileUpdate,
     UserResponse,
     UserWithRolesResponse,
@@ -236,9 +237,8 @@ async def create_user(
     - **email**: Unique email address
     - **password**: Password (min 8 chars, must contain uppercase, lowercase, and digit)
     - **fullName**: User's full name
-    - **countryId**: Optional country ID
-    - **cityId**: Optional city ID
-    - **timezone**: Optional timezone
+    - **roleIds**: Optional list of role IDs to assign (e.g., [2, 3, 4] for EDITOR, EVALUATOR, AUTHOR)
+    - **roleId**: Optional single role ID to assign (backward compatibility)
     - **orcidId**: Optional ORCID identifier
     """
     return await service.create_user(data, current_user)
@@ -336,6 +336,34 @@ async def update_user(
     - **orcidId**: Optional new ORCID identifier
     """
     return await service.update_user(user_id, data, current_user)
+
+
+@router.put(
+    "/{user_id}/roles",
+    response_model=UserWithRolesResponse,
+    dependencies=[Depends(require_super_admin)],
+    summary="Update user roles"
+)
+async def update_user_roles(
+    user_id: int,
+    data: UserRoleUpdate,
+    current_user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service)
+):
+    """
+    Update user roles (remove all existing roles and assign new ones).
+
+    **Requires:** SUPER_ADMIN role
+
+    **Parameters:**
+    - **user_id**: ID of the user whose roles should be updated
+    - **roleIds**: List of role IDs to assign to the user
+
+    **Returns:** Updated user with new roles
+
+    **Note:** This removes all existing roles and assigns the new ones.
+    """
+    return await service.update_user_roles(user_id, data.role_ids, current_user)
 
 
 @router.put(

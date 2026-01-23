@@ -165,7 +165,8 @@ async def update_manuscript_by_staff(
     """
     return await service.update_manuscript_by_staff(
         manuscript_id=manuscript_id,
-        update_data=update_data
+        update_data=update_data,
+        current_user_id=current_user.id
     )
 
 

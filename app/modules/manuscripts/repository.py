@@ -56,18 +56,27 @@ class ManuscriptRepository:
         return manuscript
 
     async def get_manuscript_by_id(self, manuscript_id: int) -> Optional[Manuscript]:
-        """Get manuscript by ID with relationships loaded"""
-        from sqlalchemy.orm import selectinload
+        """
+        Get manuscript by ID with relationships loaded
+        
+        Args:
+            manuscript_id: ID of the manuscript to retrieve
+            
+        Returns:
+            Optional[Manuscript]: The manuscript with its relationships loaded, or None if not found
+        """
+        from sqlalchemy.orm import selectinload, joinedload
         
         result = await self.session.execute(
             select(Manuscript)
             .options(
-                selectinload(Manuscript.language),
+                joinedload(Manuscript.language),
                 selectinload(Manuscript.author)
             )
             .where(Manuscript.id == manuscript_id)
+            .execution_options(populate_existing=True)
         )
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def get_manuscripts_by_author(
         self, 

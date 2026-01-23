@@ -177,7 +177,7 @@ class EvaluationGridService:
         manuscript_id: int,
         evaluator_id: int,
         data: SaveEvaluationGridRequest
-    ) -> EvaluationGridResponse:
+     ) -> EvaluationGridResponse:
         """
         Create or update evaluation grid (UPSERT).
         Returns 403 if already submitted.
@@ -271,7 +271,7 @@ class EvaluationGridService:
         self,
         manuscript_id: int,
         evaluator_id: int
-    ) -> SubmitEvaluationResponse:
+     ) -> SubmitEvaluationResponse:
         """
         Submit the evaluation grid.
         Sets submitted_at timestamp and validates all required fields are filled.
@@ -325,6 +325,7 @@ class EvaluationGridService:
         await self._update_manuscript_evaluation_status(manuscript_id)
 
         # Get manuscript and evaluator details for email notification
+        
         manuscript_query = select(Manuscript).where(Manuscript.id == manuscript_id)
         manuscript_result = await self.db.execute(manuscript_query)
         manuscript = manuscript_result.scalar_one_or_none()
@@ -335,6 +336,10 @@ class EvaluationGridService:
         
         # Send notification to system
         try:
+            logger.info(f"Sending evaluation submitted notification for manuscript {manuscript_id}")
+            logger.info(f"Manuscript: {manuscript}")
+            logger.info(f"Evaluator: {evaluator}")
+            
             EmailService.send_evaluation_submitted_notification(
                 manuscript_id=manuscript_id,
                 manuscript_title=manuscript.title if manuscript else f"Manuscrit #{manuscript_id}",
@@ -343,6 +348,51 @@ class EvaluationGridService:
                 evaluation_decision=grid.recommendation or "Non spécifié"
             )
             logger.info(f"Evaluation submitted notification sent for manuscript {manuscript_id}")
+            
+            # Send notification to author
+            logger.info(f"Preparing to send author notification for manuscript {manuscript_id}")
+            logger.info(f"Manuscript object: {manuscript}")
+            
+            if manuscript and manuscript.author_id:
+                try:
+                    # Get author details separately
+                    author_query = select(User).where(User.id == manuscript.author_id)
+                    author_result = await self.db.execute(author_query)
+                    author = author_result.scalar_one_or_none()
+                    
+                    logger.info(f"Manuscript author check: {author}")
+                    logger.info(f"Manuscript ID: {manuscript.id}")
+                    logger.info(f"Manuscript author_id: {manuscript.author_id}")
+                    logger.info(f"Author object: {author}")
+                    
+                    if author:
+                        manuscript_lang = manuscript.language or 'fr'  # Default to French if not set
+                        logger.info(f"Author details: {author.full_name}, email: {author.email}, lang: {manuscript_lang}")
+                        
+                        # Send email to author using a simple synchronous call
+                        try:
+                            logger.info(f"Attempting to send evaluation submission email to author {author.email} for manuscript {manuscript_id}")
+                            
+                            # Use a simple synchronous call since EmailService methods are sync
+                            result = EmailService.evaluator_send_evauation(
+                                str(author.email),
+                                str(author.full_name),
+                                str(manuscript.title),
+                                int(manuscript.id),
+                                str(manuscript_lang)
+                            )
+                            
+                            logger.info(f"EmailService.evaluator_send_evauation returned: {result}")
+                            logger.info(f"Author notification sent for submitted evaluation of manuscript {manuscript_id}")
+                        except Exception as e:
+                            logger.error(f"Failed to send author notification email: {str(e)}", exc_info=True)
+                    else:
+                        logger.warning(f"Author not found for manuscript {manuscript_id}")
+                except Exception as e:
+                    logger.error(f"Failed to send author notification for submitted evaluation: {str(e)}")
+            else:
+                logger.warning(f"Cannot send author notification - manuscript or author is missing. Manuscript exists: {manuscript is not None}, Author ID exists: {manuscript.author_id if manuscript else 'N/A'}")
+                    
         except Exception as e:
             logger.error(f"Failed to send evaluation submitted notification: {str(e)}")
 
@@ -382,7 +432,7 @@ class EvaluationGridService:
     async def get_manuscript_evaluation_status(
         self,
         manuscript_id: int
-    ) -> ManuscriptEvaluationStatusResponse:
+     ) -> ManuscriptEvaluationStatusResponse:
         """
         Get evaluation status for a manuscript.
         Returns counts and progress information.

@@ -2,7 +2,7 @@
 Data access layer for users module.
 Handles all database operations for users.
 """
-from sqlalchemy import select, func, or_, and_
+from sqlalchemy import select, func, or_, and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Tuple
@@ -279,3 +279,18 @@ class UserRepository:
         )
         count = result.scalar()
         return count > 0
+
+    async def remove_all_user_roles(self, user_id: int) -> None:
+        """Remove all roles for a user."""
+        result = await self.db.execute(
+            delete(UserRole).where(UserRole.user_id == user_id)
+        )
+        await self.db.commit()
+        logger.info(f"All roles removed for user {user_id}")
+
+    async def get_role_by_id(self, role_id: int) -> Optional[Role]:
+        """Get role by ID."""
+        result = await self.db.execute(
+            select(Role).where(Role.id == role_id)
+        )
+        return result.scalar_one_or_none()

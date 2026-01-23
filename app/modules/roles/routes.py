@@ -114,7 +114,7 @@ async def remove_role(
     Remove a role from a user
     Requires authentication
     """
-    await service.remove_role_from_user(user_id, role_id)
+    await service.remove_role_from_user(user_id, role_id, current_user_id=current_user.id)
 
 
 @router.get("/user/{user_id}", response_model=list[UserRoleResponse])
