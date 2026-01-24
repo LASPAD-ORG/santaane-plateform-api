@@ -1,0 +1,31 @@
+services:
+  api:
+    build: .
+    container_name: santaane_api
+    env_file: .env  # All environment variables loaded from .env file
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for hot-reload
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    depends_on:
+      - db
+    # Pass --reload flag to uvicorn via entrypoint
+    command: ["--reload"]
+
+  db:
+    image: postgres:16
+    container_name: santaane_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-santaane}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:

@@ -1,0 +1,111 @@
+# =============================================================================
+# Docker ignore file for production builds
+# =============================================================================
+# This file tells Docker which files/directories to exclude from the build context
+# This reduces build time and image size
+# =============================================================================
+
+# Git files
+.git
+.gitignore
+.gitattributes
+.github
+
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.hypothesis/
+tests/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Docker files (don't need these in the image)
+docker-compose.yml
+docker-compose.dev.yml
+Dockerfile
+Dockerfile.dev
+.dockerignore
+
+# Database dumps
+dumps/
+*.sql
+*.dump
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# CLI script (not needed in container)
+santaane
+
+# Development files
+.editorconfig
+.pre-commit-config.yaml
+
+# CI/CD files
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Node modules (if any)
+node_modules/
+
+# macOS
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
