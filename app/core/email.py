@@ -1228,6 +1228,7 @@ class EmailService:
         author_name: str,
         manuscript_title: str,
         manuscript_id: int,
+        custom_message: Optional[str] = None,
         lang: str = "fr"
      ) -> bool:
         """
@@ -1238,15 +1239,16 @@ class EmailService:
             author_name: Nom de l'auteur
             manuscript_title: Titre du manuscrit
             manuscript_id: ID du manuscrit
+            custom_message: Message personnalisé optionnel de l'éditeur
             lang: Langue de l'email (fr/en)
             
         Returns:
             bool: True si l'email a été envoyé avec succès
         """
         is_fr = cls._is_french(lang)
-        
+
         if is_fr:
-            subject = f"Manuscrit accepté et en évaluation - {manuscript_title[:50]}..."
+            subject = f"Votre manuscrit est accepté pour la publication - {manuscript_title[:50]}..."
             
             content = f"""
             <div style="color: #333;">
@@ -1256,7 +1258,7 @@ class EmailService:
                 
                 <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
                     <p style="margin: 0; font-size: 16px; color: #2e7d32;">
-                        <strong>Bonne nouvelle !</strong> Votre manuscrit a été accepté et est actuellement en cours d'évaluation.
+                        <strong>Bonne nouvelle !</strong> Votre manuscrit a été accepté pour la publication dans la revue Global Africa.
                     </p>
                 </div>
                 
@@ -1269,19 +1271,32 @@ class EmailService:
                 </div>
                 
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    a été <strong>accepté</strong> pour publication dans la revue <strong>Global Africa</strong> et est actuellement <strong>en cours d'évaluation</strong> par notre comité éditorial.
+                    a été accepté pour publication dans la revue <strong>Global Africa</strong>.
                 </p>
-                
-                <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 20px; border-radius: 12px; margin: 30px 0;">
-                    <p style="margin: 0; font-size: 15px; color: #1565c0;">
-                        <strong> Processus d'évaluation en cours :</strong><br>
-                        Votre manuscrit est en cours d'évaluation par nos experts. Vous recevrez une notification dès que le processus sera terminé.
+                """
+            
+            # Ajouter le commentaire personnalisé s'il existe
+            if custom_message and custom_message.strip():
+                content += f"""
+                <div style="background: #f0f8ff; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 15px; color: #333;">
+                        <strong>Message de l'éditeur :</strong><br>
+                        {custom_message}
+                    </p>
+                </div>
+                """
+            
+            content += f"""
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 12px; margin: 30px 0;">
+                    <p style="margin: 0; font-size: 15px; color: #856404;">
+                        <strong>Étape suivante :</strong><br>
+                        Veuillez nous soumettre la version finale de votre manuscrit au format <strong>DOCX ou Word</strong> pour la mise en page.
                     </p>
                 </div>
                 
                 <div style="text-align: center; margin: 35px 0;">
                     <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                        Suivre l'évaluation
+                        Soumettre la version finale
                     </a>
                 </div>
                 
@@ -1292,7 +1307,7 @@ class EmailService:
             </div>
             """
             
-            body = cls._get_base_template("Manuscrit Accepté et en Évaluation", content)
+            body = cls._get_base_template("Manuscrit Accepté", content)
         else:
             subject = f"Manuscript Accepted and Under Evaluation - {manuscript_title[:50]}..."
             
@@ -1317,19 +1332,32 @@ class EmailService:
                 </div>
                 
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    has been <strong>accepted</strong> for publication in the <strong>Global Africa</strong> journal and is currently <strong>under evaluation</strong> by our editorial committee.
+                    has been <strong>accepted</strong> for publication in the <strong>Global Africa</strong> journal.
                 </p>
-                
-                <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 20px; border-radius: 12px; margin: 30px 0;">
-                    <p style="margin: 0; font-size: 15px; color: #1565c0;">
-                        <strong> Evaluation Process in Progress:</strong><br>
-                        Your manuscript is currently being evaluated by our experts. You will receive a notification as soon as the process is completed.
+                """
+            
+            # Ajouter le commentaire personnalisé s'il existe
+            if custom_message and custom_message.strip():
+                content += f"""
+                <div style="background: #f0f8ff; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 15px; color: #333;">
+                        <strong>Editor's Message:</strong><br>
+                        {custom_message}
+                    </p>
+                </div>
+                """
+            
+            content += f"""
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 12px; margin: 30px 0;">
+                    <p style="margin: 0; font-size: 15px; color: #856404;">
+                        <strong>Next Step:</strong><br>
+                        Please submit the final version of your manuscript in <strong>DOCX or Word format</strong> for typesetting.
                     </p>
                 </div>
                 
                 <div style="text-align: center; margin: 35px 0;">
                     <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                        Track Evaluation
+                        Submit Final Version
                     </a>
                 </div>
                 
@@ -1369,6 +1397,8 @@ class EmailService:
             bool: True si l'email a été envoyé avec succès
         """
         is_fr = cls._is_french(lang)
+        
+        logger.info(f"Rejection reason received: {rejection_reason}")
         
         if is_fr:
             subject = f"Décision concernant votre manuscrit - {manuscript_title[:50]}..."
@@ -1501,6 +1531,7 @@ class EmailService:
         manuscript_title: str,
         manuscript_id: int,
         publication_url: str = None,
+        custom_message: Optional[str] = None,
         lang: str = "fr"
      ) -> bool:
         """
@@ -1512,6 +1543,7 @@ class EmailService:
             manuscript_title: Titre du manuscrit
             manuscript_id: ID du manuscrit
             publication_url: URL de publication (optionnel)
+            custom_message: Message personnalisé optionnel de l'éditeur
             lang: Langue de l'email (fr/en)
             
         Returns:
@@ -1546,12 +1578,23 @@ class EmailService:
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
                     est désormais <strong>publié</strong> et accessible au public dans la revue <strong>Global Africa</strong>.
                 </p>
-                
+                """
+            
+            # Ajouter le commentaire personnalisé s'il existe
+            if custom_message and custom_message.strip():
+                content += f"""
+                <div style="background: #f0f8ff; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 15px; color: #333;">
+                        <strong>Message de l'éditeur :</strong><br>
+                        {custom_message}
+                    </p>
+                </div>
+                """
+            
+            content += f"""
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
                     Vous pouvez partager ce lien avec vos collègues et sur vos réseaux professionnels :
                 </p>
-                
-                
                 
                 <div style="text-align: center; margin: 35px 0;">
                     <a href="{publication_link}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
@@ -1597,11 +1640,23 @@ class EmailService:
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
                     has been <strong>published</strong> and is now publicly available in the <strong>Global Africa</strong> journal.
                 </p>
-                
+                """
+            
+            # Ajouter le commentaire personnalisé s'il existe
+            if custom_message and custom_message.strip():
+                content += f"""
+                <div style="background: #f0f8ff; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 15px; color: #333;">
+                        <strong>Editor's Message:</strong><br>
+                        {custom_message}
+                    </p>
+                </div>
+                """
+            
+            content += f"""
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
                     You can share this link with your colleagues and on your professional networks:
                 </p>
-                
                 
                 <div style="text-align: center; margin: 35px 0;">
                     <a href="{publication_link}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
@@ -1642,7 +1697,7 @@ class EmailService:
             author_name: Nom de l'auteur
             manuscript_title: Titre du manuscrit
             manuscript_id: ID du manuscrit
-            revision_comments: Commentaires des évaluateurs (optionnel)
+            revision_comments: Commentaires de l'éditeur (optionnel)
             lang: Langue de l'email (fr/en)
             
         Returns:
@@ -1657,7 +1712,7 @@ class EmailService:
             if revision_comments:
                 comments_section = f"""
                 <div style="background: #f8f9fa; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                    <h4 style="margin: 0 0 10px 0; color: #ff9800;">Commentaires des évaluateurs :</h4>
+                    <h4 style="margin: 0 0 10px 0; color: #ff9800;">Commentaires de l'éditeur :</h4>
                     <div style="font-size: 14px; color: #555; white-space: pre-line;">{revision_comments}</div>
                 </div>
                 """
@@ -1689,7 +1744,7 @@ class EmailService:
                 {comments_section}
                 
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    Veuillez prendre en compte les commentaires des évaluateurs et soumettre une version révisée de votre manuscrit.
+                    Veuillez prendre en compte les commentaires de l'éditeur et soumettre une version révisée de votre manuscrit.
                 </p>
                 
                 <div style="text-align: center; margin: 35px 0;">
@@ -1717,7 +1772,7 @@ class EmailService:
             if revision_comments:
                 comments_section = f"""
                 <div style="background: #f8f9fa; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                    <h4 style="margin: 0 0 10px 0; color: #ff9800;">Reviewer Comments:</h4>
+                    <h4 style="margin: 0 0 10px 0; color: #ff9800;">Editor's Comments:</h4>
                     <div style="font-size: 14px; color: #555; white-space: pre-line;">{revision_comments}</div>
                 </div>
                 """
@@ -1749,7 +1804,7 @@ class EmailService:
                 {comments_section}
                 
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    Please address the reviewers' comments and submit a revised version of your manuscript.
+                    Please address the editor's comments and submit a revised version of your manuscript.
                 </p>
                 
                 <div style="text-align: center; margin: 35px 0;">
@@ -2432,14 +2487,14 @@ class EmailService:
                         Cher(e) <strong>{author_name}</strong>,
                     </p>
                     
-                    <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <div style="background: linear-gradient(135deg, #e8f5e3 0%, #d4e7d4 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
                         <p style="margin: 0; font-size: 16px; color: #2e7d32;">
-                            <strong>Un évaluateur a accepté d'évaluer votre manuscrit</strong>
+                            <strong>Votre manuscrit est en cours d'évaluation</strong>
                         </p>
                     </div>
                     
                     <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                        Nous avons le plaisir de vous informer qu'un évaluateur a accepté d'évaluer votre manuscrit :
+                        Nous avons le plaisir de vous informer que votre manuscrit est actuellement en cours d'évaluation par nos experts :
                     </p>
                     
                     <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
@@ -2450,8 +2505,8 @@ class EmailService:
                     </div>
                     
                     <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                        L'évaluation est en cours et nous vous tiendrons informé(e) dès que nous aurons les résultats.
-                        Le processus d'évaluation par les pairs est essentiel pour maintenir la qualité des publications.
+                        Le processus d'évaluation par les pairs est en cours et nous vous tiendrons informé(e) dès que nous aurons les résultats.
+                        Cette étape est essentielle pour maintenir la qualité et l'excellence des publications dans notre revue.
                     </p>
                     
                     <div style="text-align: center; margin: 35px 0;">
@@ -2471,7 +2526,7 @@ class EmailService:
                 </div>
                 """
                 
-                body = cls._get_base_template("Évaluateur confirmé", content)
+                body = cls._get_base_template("Manuscrit en Évaluation", content)
                 
             else:
                 subject = f"Evaluation Confirmation - {manuscript_title[:50]}..."
@@ -2482,14 +2537,14 @@ class EmailService:
                         Dear <strong>{author_name}</strong>,
                     </p>
                     
-                    <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <div style="background: linear-gradient(135deg, #e8f5e3 0%, #d4e7d4 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
                         <p style="margin: 0; font-size: 16px; color: #2e7d32;">
-                            <strong>An Evaluator Has Accepted to Review Your Manuscript</strong>
+                            <strong>Your Manuscript is Under Evaluation</strong>
                         </p>
                     </div>
                     
                     <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                        We are pleased to inform you that an evaluator has accepted to review your manuscript:
+                        We are pleased to inform you that your manuscript is currently under evaluation by our experts:
                     </p>
                     
                     <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
@@ -2500,8 +2555,8 @@ class EmailService:
                     </div>
                     
                     <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                        The evaluation is in progress, and we will keep you informed as soon as we have the results.
-                        The peer review process is essential to maintain the quality of publications.
+                        The peer review process is in progress, and we will keep you informed as soon as we have the results.
+                        This step is essential to maintain the quality and excellence of publications in our journal.
                     </p>
                     
                     <div style="text-align: center; margin: 35px 0;">
@@ -2521,7 +2576,7 @@ class EmailService:
                 </div>
                 """
                 
-                body = cls._get_base_template("Evaluator Confirmed", content)
+                body = cls._get_base_template("Manuscript Under Evaluation", content)
                 
         else:
             if is_fr:

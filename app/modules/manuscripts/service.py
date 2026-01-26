@@ -94,7 +94,7 @@ class ManuscriptService:
         self, 
         manuscript_data: ManuscriptSubmit, 
         author_id: int
-    ) -> ManuscriptResponse:
+     ) -> ManuscriptResponse:
         """Submit a new manuscript"""
         logger.info(f"Manuscript submission attempt by user {author_id}")
 
@@ -199,7 +199,7 @@ class ManuscriptService:
         author_id: int,
         skip: int = 0,
         limit: int = 100
-    ) -> ManuscriptListResponse:
+     ) -> ManuscriptListResponse:
         """Get all manuscripts for the current author"""
         from sqlmodel import select
         from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
@@ -286,7 +286,7 @@ class ManuscriptService:
         language_id: int | None = None,
         skip: int = 0,
         limit: int = 100
-    ) -> ManuscriptListResponse:
+     ) -> ManuscriptListResponse:
         """Get all manuscripts with optional filters (for editors)"""
         logger.info(f"Fetching all manuscripts with filters: theme={theme_id}, section={section_id}, language={language_id}")
 
@@ -355,7 +355,7 @@ class ManuscriptService:
     async def get_manuscript_detail_for_staff(
         self,
         manuscript_id: int
-    ) -> ManuscriptDetailResponse:
+     ) -> ManuscriptDetailResponse:
         """Get detailed manuscript information for admin/editor/evaluator"""
         logger.info(f"Fetching manuscript details {manuscript_id} for staff")
 
@@ -410,7 +410,7 @@ class ManuscriptService:
         self,
         manuscript_id: int,
         current_user_id: int
-    ) -> ManuscriptResponse:
+     ) -> ManuscriptResponse:
         """Get manuscript details by ID (only if user is the author)"""
         logger.info(f"Fetching manuscript {manuscript_id} for user {current_user_id}")
 
@@ -454,7 +454,7 @@ class ManuscriptService:
         manuscript_id: int,
         revision_data: "ManuscriptRevision",
         current_user_id: int
-    ) -> "ManuscriptResponse":
+     ) -> "ManuscriptResponse":
         """Revise a manuscript (only if status is REVISION_REQUESTED)"""
         from app.models.enums import ManuscriptStatus
         
@@ -582,7 +582,7 @@ class ManuscriptService:
         manuscript_id: int,
         docx_filename: str,
         current_user_id: int
-    ) -> ManuscriptResponse:
+     ) -> ManuscriptResponse:
         """Upload DOCX file for an accepted manuscript (author only)"""
         logger.info(f"Author {current_user_id} uploading DOCX for manuscript {manuscript_id}")
 
@@ -706,7 +706,7 @@ class ManuscriptService:
         manuscript_id: int,
         update_data: ManuscriptUpdate,
         current_user_id: int  # Ajout de l'utilisateur courant
-    ) -> ManuscriptDetailResponse:
+     ) -> ManuscriptDetailResponse:
         """
         Met à jour un manuscrit par un membre du staff et envoie des notifications
         
@@ -859,7 +859,7 @@ class ManuscriptService:
         self,
         manuscript_id: int,
         status_data: ManuscriptStatusUpdate
-    ) -> ManuscriptDetailResponse:
+     ) -> ManuscriptDetailResponse:
         """
         Met à jour le statut d'un manuscrit et envoie une notification à l'auteur
         
@@ -937,18 +937,21 @@ class ManuscriptService:
                         author_name=author_name,
                         manuscript_title=manuscript.title,
                         manuscript_id=manuscript.id,
+                        custom_message=status_data.emailComment,
                         lang=manuscript_lang
                     )
                     logger.info(f"Email d'acceptation envoyé à {author_email}")
                     
                 elif status_data.status == ManuscriptStatus.REJECTED:
+                    logger.info(f"Full status_data: {status_data}")
+                    logger.info(f"Email comment from status_data: {status_data.emailComment}")
                     await run_in_threadpool(
                         EmailService.send_manuscript_rejected_email,
                         to_email=author_email,
                         author_name=author_name,
                         manuscript_title=manuscript.title,
                         manuscript_id=manuscript.id,
-                        rejection_reason=getattr(status_data, 'comment', None),
+                        rejection_reason=status_data.emailComment,
                         lang=manuscript_lang
                     )
                     logger.info(f"Email de rejet envoyé à {author_email}")
@@ -962,6 +965,7 @@ class ManuscriptService:
                         manuscript_title=manuscript.title,
                         manuscript_id=manuscript.id,
                         publication_url=publication_url,
+                        custom_message=status_data.emailComment,
                         lang=manuscript_lang
                     )
                     logger.info(f"Email de publication envoyé à {author_email}")
@@ -977,7 +981,7 @@ class ManuscriptService:
                         author_name=author_name,
                         manuscript_title=manuscript.title,
                         manuscript_id=manuscript.id,
-                        revision_comments=getattr(status_data, 'comment', None),
+                        revision_comments=status_data.emailComment,
                         lang=manuscript_lang
                     )
                     logger.info(f"Demande de révision envoyée à {author_email}")

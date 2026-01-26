@@ -26,7 +26,7 @@ class EvaluatorManuscriptService:
         self,
         manuscript_id: int,
         evaluator_id: int
-    ) -> str:
+     ) -> str:
         """
         Get evaluation status for a specific manuscript and evaluator.
         

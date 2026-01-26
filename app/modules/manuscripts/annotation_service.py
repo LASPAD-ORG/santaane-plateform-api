@@ -102,7 +102,7 @@ class AnnotationService:
         self,
         manuscript_id: int,
         evaluator_id: int
-    ) -> List[AnnotationResponse]:
+     ) -> List[AnnotationResponse]:
         """
         Get all annotations for a manuscript.
         Evaluators can only see their own annotations.

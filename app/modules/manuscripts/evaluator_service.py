@@ -172,7 +172,7 @@ class EvaluatorAssignmentService:
         manuscript_id: int,
         evaluator_id: int,
         accept: bool
-    ) -> dict:
+     ) -> dict:
         """Evaluator accepts or declines an assignment"""
         
         # Get assignment
@@ -317,7 +317,7 @@ class EvaluatorAssignmentService:
         self,
         manuscript_id: int,
         evaluator_id: int
-    ) -> dict:
+     ) -> dict:
         """Send reminder email to evaluator who hasn't responded"""
 
         # Get assignment
