@@ -18,6 +18,10 @@ if TYPE_CHECKING:
     from app.models.language import Language
     from app.models.manuscript_annotation import ManuscriptAnnotation
     from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
+<<<<<<< HEAD
+=======
+    from app.models.editorial_version import EditorialVersion
+>>>>>>> feature-editorial-module
 
 
 class Manuscript(SQLModel, table=True):
@@ -123,3 +127,11 @@ class Manuscript(SQLModel, table=True):
     anonymized_by: Optional["User"] = Relationship(
         sa_relationship_kwargs={"foreign_keys": "[Manuscript.anonymized_by_id]"}
     )
+<<<<<<< HEAD
+=======
+    
+    editorial_versions: List["EditorialVersion"] = Relationship(
+        back_populates="manuscript",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+>>>>>>> feature-editorial-module

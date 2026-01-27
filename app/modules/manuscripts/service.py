@@ -1032,3 +1032,9 @@ class ManuscriptService:
         
         logger.info(f"Found {len(manuscripts)} manuscript assignments for evaluator {evaluator_id}")
         return manuscripts
+
+def generate_editorial_filename(manuscript_title: str, editor_name: str, version: int) -> str:
+    # Nettoyer le titre (enlever espaces et caractères spéciaux)
+    clean_title = "".join(e for e in manuscript_title if e.isalnum())[:30]
+    clean_editor = "".join(e for e in editor_name if e.isalnum())
+    return f"version_{version}_{clean_title}_{clean_editor}.docx"

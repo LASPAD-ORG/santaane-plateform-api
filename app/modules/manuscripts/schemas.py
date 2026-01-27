@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 from app.models.enums import ManuscriptStatus, EvaluatorAssignmentStatus
-
+from pydantic import BaseModel, Field, ConfigDict, field_validator 
 
 class ManuscriptSubmit(BaseModel):
     """Schema for manuscript submission"""
@@ -46,8 +46,8 @@ class ManuscriptUpdate(BaseModel):
 
 class ManuscriptStatusUpdate(BaseModel):
     """Schema for updating manuscript status"""
+
     model_config = ConfigDict(populate_by_name=True)
-    
     status: ManuscriptStatus = Field(..., description="New status (REVISION_REQUESTED, ACCEPTED, REJECTED, or PUBLISHED)", alias="new_status")
     emailComment: Optional[str] = Field(None, description="Optional comment for email notification (not stored in database)", alias="email_comment")
 
@@ -157,5 +157,23 @@ class EvaluatorManuscriptResponse(BaseModel):
     responseAt: Optional[datetime] = None
     createdAt: datetime
     updatedAt: datetime
-    
     model_config = ConfigDict(from_attributes=True)
+
+    
+class EditorialVersionResponse(BaseModel):
+    id: int
+    versionNumber: int = Field(alias="version_number")
+    filename: str
+    createdAt: datetime = Field(alias="created_at")
+    editorId: int = Field(alias="editor_id")
+    editorName: Optional[str] = None
+
+    @field_validator("editorName", mode="before")
+    @classmethod
+    def get_editor_name(cls, v, info):
+        # Cette logique va chercher le nom dans l'objet 'editor' chargé via joinedload
+        if info.data.get("editor"):
+            return info.data["editor"].full_name # ou .name selon ton modèle User
+        return "Éditeur Inconnu"
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

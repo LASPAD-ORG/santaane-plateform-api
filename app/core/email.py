@@ -3933,4 +3933,3 @@ class EmailService:
             """
         
         return cls.send_email(cls.FROM_EMAIL, subject, content)
-

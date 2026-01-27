@@ -15,7 +15,6 @@ from app.models.enums import EvaluatorAssignmentStatus
 from app.core.email import EmailService
 from app.core.logging import logger
 
-
 class EvaluatorAssignmentService:
     """Service for managing evaluator assignments"""
     
