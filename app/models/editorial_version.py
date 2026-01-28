@@ -2,8 +2,6 @@ from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 from sqlalchemy import Column, DateTime, func
-from sqlalchemy.orm import relationship
-from sqlalchemy import ForeignKey
 
 if TYPE_CHECKING:
     from app.models.manuscript import Manuscript
@@ -30,4 +28,3 @@ class EditorialVersion(SQLModel, table=True):
 
     manuscript: "Manuscript" = Relationship(back_populates="editorial_versions")
     editor: "User" = Relationship()
-    editor = relationship("User")

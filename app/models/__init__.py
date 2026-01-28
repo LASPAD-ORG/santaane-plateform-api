@@ -18,12 +18,8 @@ from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 from app.models.manuscript import Manuscript
 from app.models.manuscript_annotation import ManuscriptAnnotation
 from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
-
-<<<<<<< HEAD
-
-=======
 from .editorial_version import EditorialVersion
->>>>>>> feature-editorial-module
+
 # Add all new models to this list and to __all__
 __all__ = [
     # Core models
@@ -41,4 +37,5 @@ __all__ = [
     "Manuscript",
     "ManuscriptAnnotation",
     "ManuscriptEvaluationGrid",
+    "EditorialVersion",
 ]
