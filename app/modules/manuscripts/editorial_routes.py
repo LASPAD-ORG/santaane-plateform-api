@@ -51,26 +51,13 @@ async def upload_editorial_version(
     current_user = Depends(get_current_user)
 ):
     """Télécharge une nouvelle version éditoriale"""
-    
+
     # 1. Vérifier si le manuscrit existe
     manuscript = await db.get(Manuscript, id)
     if not manuscript:
         raise HTTPException(status_code=404, detail="Manuscrit non trouvé")
 
-    # 2. Préparation du fichier
-    file_extension = os.path.splitext(file.filename)[1]
-    timestamp = int(datetime.now().timestamp())
-    filename = f"editorial_ms_{id}_{timestamp}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-
-    # 3. Sauvegarde physique
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur d'écriture: {str(e)}")
-
-    # 4. Calcul du numéro de version
+    # 2. Calcul du numéro de version (avant de créer le nom du fichier)
     query = (
         select(EditorialVersion)
         .where(EditorialVersion.manuscript_id == id)
@@ -80,6 +67,21 @@ async def upload_editorial_version(
     last_v = result.scalars().first()
     next_v = (last_v.version_number + 1) if last_v else 1
 
+    # 3. Préparation du nom de fichier avec le nom de l'éditeur
+    file_extension = os.path.splitext(file.filename)[1]
+    # Nettoyer le nom de l'éditeur (enlever espaces et caractères spéciaux)
+    editor_name_clean = current_user.full_name.replace(" ", "_").replace("'", "").replace('"', '')
+    # Format: editorial_ms_{id}_version_{numero}_nomEditeur.docx
+    filename = f"editorial_ms_{id}_version_{next_v}_{editor_name_clean}{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+
+    # 4. Sauvegarde physique
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur d'écriture: {str(e)}")
+
     # 5. Enregistrement en base
     new_version = EditorialVersion(
         manuscript_id=id,
@@ -87,16 +89,25 @@ async def upload_editorial_version(
         filename=filename,
         editor_id=current_user.id
     )
-    
+
     db.add(new_version)
     try:
         await db.commit()
         await db.refresh(new_version)
+
+        # Charger la relation editor pour avoir le nom dans la réponse
+        query = (
+            select(EditorialVersion)
+            .where(EditorialVersion.id == new_version.id)
+            .options(joinedload(EditorialVersion.editor))
+        )
+        result = await db.execute(query)
+        new_version = result.scalar_one()
     except Exception as e:
         if os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Erreur DB: {str(e)}")
-    
+
     return new_version
 
 from fastapi.responses import FileResponse
@@ -108,9 +119,14 @@ async def download_editorial_version(
     current_user = Depends(get_current_user)
 ):
     # Sécurité : on vérifie que la version appartient bien au manuscrit spécifié
-    query = select(EditorialVersion).where(
-        EditorialVersion.id == version_id,
-        EditorialVersion.manuscript_id == id
+    # On charge aussi l'éditeur pour avoir son nom
+    query = (
+        select(EditorialVersion)
+        .where(
+            EditorialVersion.id == version_id,
+            EditorialVersion.manuscript_id == id
+        )
+        .options(joinedload(EditorialVersion.editor))
     )
     result = await db.execute(query)
     version = result.scalar_one_or_none()
@@ -122,8 +138,9 @@ async def download_editorial_version(
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Le fichier n'existe pas sur le serveur")
 
+    # Utiliser le nom de fichier qui contient déjà la version et le nom de l'éditeur
     return FileResponse(
         path=file_path,
-        filename=version.filename, # Le navigateur verra le nom original
+        filename=version.filename, # Le nom contient déjà version_X_nomEditeur.docx
         media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )

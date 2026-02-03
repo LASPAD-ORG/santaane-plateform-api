@@ -2,11 +2,10 @@
 Manuscripts module - Pydantic schemas
 All fields use camelCase for client communication
 """
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 from datetime import datetime
 from typing import Optional, List
-from app.models.enums import ManuscriptStatus, EvaluatorAssignmentStatus
-from pydantic import BaseModel, Field, ConfigDict, field_validator 
+from app.models.enums import ManuscriptStatus, EvaluatorAssignmentStatus 
 
 class ManuscriptSubmit(BaseModel):
     """Schema for manuscript submission"""
@@ -168,12 +167,20 @@ class EditorialVersionResponse(BaseModel):
     editorId: int = Field(alias="editor_id")
     editorName: Optional[str] = None
 
-    @field_validator("editorName", mode="before")
+    @model_validator(mode="before")
     @classmethod
-    def get_editor_name(cls, v, info):
-        # Cette logique va chercher le nom dans l'objet 'editor' chargé via joinedload
-        if info.data.get("editor"):
-            return info.data["editor"].full_name # ou .name selon ton modèle User
-        return "Éditeur Inconnu"
+    def extract_editor_name(cls, data):
+        # Si c'est un objet SQLModel avec une relation editor
+        if hasattr(data, "editor") and data.editor:
+            # On crée un dict avec toutes les valeurs nécessaires
+            return {
+                "id": data.id,
+                "version_number": data.version_number,
+                "filename": data.filename,
+                "created_at": data.created_at,
+                "editor_id": data.editor_id,
+                "editorName": data.editor.full_name
+            }
+        return data
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
