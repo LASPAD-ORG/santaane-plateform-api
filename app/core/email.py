@@ -207,6 +207,9 @@ class EmailService:
             <p style="color: #999; font-size: 13px;">
                 Si vous n'avez pas créé de compte, ignorez cet email.
             </p>
+            <p style="color: #999; font-size: 13px;">
+                Vérifiez votre dossier spam, le cas échéant.
+            </p>
         </div>
         """
         
