@@ -1,8 +1,8 @@
-"""auto_migration_20260202_231644
+"""auto_migration_20260208_192910
 
-Revision ID: a00c466a2d92
+Revision ID: f2dfa580ca11
 Revises: 
-Create Date: 2026-02-02 23:16:46.319865
+Create Date: 2026-02-08 19:29:11.247482
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'a00c466a2d92'
+revision: str = 'f2dfa580ca11'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -149,6 +149,20 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_user_roles_role_id'), 'user_roles', ['role_id'], unique=False)
     op.create_index(op.f('ix_user_roles_user_id'), 'user_roles', ['user_id'], unique=False)
+    op.create_table('coauthors',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('manuscript_id', sa.Integer(), nullable=False),
+    sa.Column('order', sa.Integer(), nullable=False),
+    sa.Column('first_name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+    sa.Column('last_name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+    sa.Column('email', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
+    sa.Column('institution', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
+    sa.Column('orcid_id', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['manuscript_id'], ['manuscripts.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_coauthors_manuscript_id'), 'coauthors', ['manuscript_id'], unique=False)
     op.create_table('editorial_versions',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('version_number', sa.Integer(), nullable=False),
@@ -234,6 +248,8 @@ def downgrade() -> None:
     op.drop_table('manuscript_annotations')
     op.drop_index(op.f('ix_editorial_versions_manuscript_id'), table_name='editorial_versions')
     op.drop_table('editorial_versions')
+    op.drop_index(op.f('ix_coauthors_manuscript_id'), table_name='coauthors')
+    op.drop_table('coauthors')
     op.drop_index(op.f('ix_user_roles_user_id'), table_name='user_roles')
     op.drop_index(op.f('ix_user_roles_role_id'), table_name='user_roles')
     op.drop_table('user_roles')

@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from app.models.manuscript_annotation import ManuscriptAnnotation
     from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
     from app.models.editorial_version import EditorialVersion
+    from app.models.coauthor import Coauthor
 
 
 class Manuscript(SQLModel, table=True):
@@ -128,4 +129,10 @@ class Manuscript(SQLModel, table=True):
     editorial_versions: List["EditorialVersion"] = Relationship(
         back_populates="manuscript",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+    # Co-auteurs
+    coauthors: List["Coauthor"] = Relationship(
+        back_populates="manuscript",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "Coauthor.order"}
     )

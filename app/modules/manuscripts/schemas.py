@@ -7,6 +7,28 @@ from datetime import datetime
 from typing import Optional, List
 from app.models.enums import ManuscriptStatus, EvaluatorAssignmentStatus 
 
+class CoauthorInput(BaseModel):
+    """Schema for co-author input during submission"""
+    firstName: str = Field(..., min_length=1, max_length=100, description="First name of the co-author")
+    lastName: str = Field(..., min_length=1, max_length=100, description="Last name of the co-author")
+    email: str = Field(..., description="Email of the co-author")
+    institution: Optional[str] = Field(None, max_length=255, description="Institution/affiliation")
+    orcidId: Optional[str] = Field(None, max_length=50, description="ORCID identifier")
+
+
+class CoauthorResponse(BaseModel):
+    """Schema for co-author response"""
+    id: int
+    firstName: str
+    lastName: str
+    email: str
+    institution: Optional[str] = None
+    orcidId: Optional[str] = None
+    order: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ManuscriptSubmit(BaseModel):
     """Schema for manuscript submission"""
     title: str = Field(..., min_length=3, max_length=500)
@@ -17,6 +39,7 @@ class ManuscriptSubmit(BaseModel):
     languageId: int = Field(..., gt=0)
     pdfFilename: str = Field(..., description="Name of the uploaded PDF file")
     docxFilename: Optional[str] = Field(None, description="Optional name of the uploaded DOCX file")
+    coauthors: Optional[List[CoauthorInput]] = Field(None, description="List of co-authors")
 
 
 class ManuscriptRevision(BaseModel):
@@ -29,6 +52,7 @@ class ManuscriptRevision(BaseModel):
     languageId: Optional[int] = Field(None, gt=0)
     pdfFilename: Optional[str] = Field(None, description="Name of the uploaded PDF file")
     docxFilename: Optional[str] = Field(None, description="Optional name of the uploaded DOCX file")
+    coauthors: Optional[List[CoauthorInput]] = Field(None, description="Updated list of co-authors")
 
 
 class ManuscriptUpdate(BaseModel):
@@ -96,6 +120,7 @@ class ManuscriptResponse(BaseModel):
     pdfFilename: str
     docxFilename: Optional[str] = None
     evaluators: List[EvaluatorAssignment] = Field(default_factory=list)
+    coauthors: List[CoauthorResponse] = Field(default_factory=list)
     # Anonymisation fields
     isAnonymized: bool = Field(default=False)
     anonymizedAt: Optional[datetime] = None
@@ -122,6 +147,7 @@ class ManuscriptDetailResponse(BaseModel):
     pdfFilename: str
     docxFilename: Optional[str] = None
     author: AuthorInfo
+    coauthors: List[CoauthorResponse] = Field(default_factory=list)
     # Anonymisation fields
     isAnonymized: bool = Field(default=False)
     anonymizedAt: Optional[datetime] = None
