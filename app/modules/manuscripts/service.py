@@ -7,7 +7,7 @@ from typing import List
 from datetime import datetime, timedelta
 from app.modules.manuscripts.repository import ManuscriptRepository
 from app.modules.manuscripts.schemas import (
-    ManuscriptSubmit, 
+    ManuscriptSubmit,
     ManuscriptResponse,
     ManuscriptListResponse,
     ManuscriptRevision,
@@ -16,8 +16,10 @@ from app.modules.manuscripts.schemas import (
     ManuscriptUpdate,
     ManuscriptStatusUpdate,
     EvaluatorAssignment,
-    EvaluatorManuscriptResponse
+    EvaluatorManuscriptResponse,
+    CoauthorResponse
 )
+from app.models.coauthor import Coauthor
 from app.modules.manuscripts.error_codes import ManuscriptErrorCode
 from app.models.manuscript import Manuscript
 from app.models.enums import ManuscriptStatus
@@ -143,6 +145,36 @@ class ManuscriptService:
         created_manuscript = await self.repository.create_manuscript(manuscript)
         logger.info(f"Manuscript {created_manuscript.id} submitted successfully by user {author_id}")
 
+        # Create co-authors if provided
+        coauthor_responses = []
+        if manuscript_data.coauthors:
+            coauthors_to_create = []
+            for idx, coauthor_data in enumerate(manuscript_data.coauthors, start=1):
+                coauthor = Coauthor(
+                    manuscript_id=created_manuscript.id,
+                    order=idx,
+                    first_name=coauthor_data.firstName,
+                    last_name=coauthor_data.lastName,
+                    email=coauthor_data.email,
+                    institution=coauthor_data.institution,
+                    orcid_id=coauthor_data.orcidId
+                )
+                coauthors_to_create.append(coauthor)
+
+            created_coauthors = await self.repository.create_coauthors(coauthors_to_create)
+            coauthor_responses = [
+                CoauthorResponse(
+                    id=c.id,
+                    firstName=c.first_name,
+                    lastName=c.last_name,
+                    email=c.email,
+                    institution=c.institution,
+                    orcidId=c.orcid_id,
+                    order=c.order
+                ) for c in created_coauthors
+            ]
+            logger.info(f"Created {len(created_coauthors)} co-authors for manuscript {created_manuscript.id}")
+
         # Fetch related data for response
         theme = await self.repository.get_theme_by_id(created_manuscript.theme_id) if created_manuscript.theme_id else None
         
@@ -190,6 +222,7 @@ class ManuscriptService:
             status=created_manuscript.status,
             pdfFilename=created_manuscript.pdf_filename,
             docxFilename=created_manuscript.docx_filename,
+            coauthors=coauthor_responses,
             createdAt=created_manuscript.created_at,
             updatedAt=created_manuscript.updated_at
         )
@@ -256,6 +289,20 @@ class ManuscriptService:
                     )
                 )
 
+            # Load co-authors for this manuscript
+            coauthors = await self.repository.get_coauthors_by_manuscript(manuscript.id)
+            coauthor_responses = [
+                CoauthorResponse(
+                    id=c.id,
+                    firstName=c.first_name,
+                    lastName=c.last_name,
+                    email=c.email,
+                    institution=c.institution,
+                    orcidId=c.orcid_id,
+                    order=c.order
+                ) for c in coauthors
+            ]
+
             manuscript_responses.append(
                 ManuscriptResponse(
                     id=manuscript.id,
@@ -269,6 +316,7 @@ class ManuscriptService:
                     pdfFilename=manuscript.pdf_filename,
                     docxFilename=manuscript.docx_filename,
                     evaluators=evaluator_assignments,
+                    coauthors=coauthor_responses,
                     createdAt=manuscript.created_at,
                     updatedAt=manuscript.updated_at
                 )
@@ -329,6 +377,20 @@ class ManuscriptService:
                     )
                 )
 
+            # Load co-authors for this manuscript
+            coauthors = await self.repository.get_coauthors_by_manuscript(manuscript.id)
+            coauthor_responses = [
+                CoauthorResponse(
+                    id=c.id,
+                    firstName=c.first_name,
+                    lastName=c.last_name,
+                    email=c.email,
+                    institution=c.institution,
+                    orcidId=c.orcid_id,
+                    order=c.order
+                ) for c in coauthors
+            ]
+
             manuscript_responses.append(
                 ManuscriptResponse(
                     id=manuscript.id,
@@ -342,6 +404,7 @@ class ManuscriptService:
                     pdfFilename=manuscript.pdf_filename,
                     docxFilename=manuscript.docx_filename,
                     evaluators=evaluator_assignments,
+                    coauthors=coauthor_responses,
                     createdAt=manuscript.created_at,
                     updatedAt=manuscript.updated_at
                 )
@@ -380,6 +443,20 @@ class ManuscriptService:
         section = await self.repository.get_section_by_id(manuscript.section_id)
         language = await self.repository.get_language_by_id(manuscript.language_id)
 
+        # Load co-authors
+        coauthors = await self.repository.get_coauthors_by_manuscript(manuscript.id)
+        coauthor_responses = [
+            CoauthorResponse(
+                id=c.id,
+                firstName=c.first_name,
+                lastName=c.last_name,
+                email=c.email,
+                institution=c.institution,
+                orcidId=c.orcid_id,
+                order=c.order
+            ) for c in coauthors
+        ]
+
         return ManuscriptDetailResponse(
             id=manuscript.id,
             title=manuscript.title,
@@ -402,6 +479,7 @@ class ManuscriptService:
                 position=author.position,
                 institution=author.institution
             ),
+            coauthors=coauthor_responses,
             createdAt=manuscript.created_at,
             updatedAt=manuscript.updated_at
         )
@@ -434,6 +512,20 @@ class ManuscriptService:
         section = await self.repository.get_section_by_id(manuscript.section_id)
         language = await self.repository.get_language_by_id(manuscript.language_id)
 
+        # Load co-authors
+        coauthors = await self.repository.get_coauthors_by_manuscript(manuscript.id)
+        coauthor_responses = [
+            CoauthorResponse(
+                id=c.id,
+                firstName=c.first_name,
+                lastName=c.last_name,
+                email=c.email,
+                institution=c.institution,
+                orcidId=c.orcid_id,
+                order=c.order
+            ) for c in coauthors
+        ]
+
         return ManuscriptResponse(
             id=manuscript.id,
             title=manuscript.title,
@@ -445,6 +537,7 @@ class ManuscriptService:
             status=manuscript.status,
             pdfFilename=manuscript.pdf_filename,
             docxFilename=manuscript.docx_filename,
+            coauthors=coauthor_responses,
             createdAt=manuscript.created_at,
             updatedAt=manuscript.updated_at
         )
@@ -524,6 +617,55 @@ class ManuscriptService:
                 )
             manuscript.language_id = revision_data.languageId
 
+        # Update co-authors if provided
+        coauthor_responses = []
+        if revision_data.coauthors is not None:
+            # Delete existing co-authors
+            await self.repository.delete_coauthors_by_manuscript(manuscript_id)
+
+            # Create new co-authors
+            if revision_data.coauthors:
+                coauthors_to_create = []
+                for idx, coauthor_data in enumerate(revision_data.coauthors, start=1):
+                    coauthor = Coauthor(
+                        manuscript_id=manuscript_id,
+                        order=idx,
+                        first_name=coauthor_data.firstName,
+                        last_name=coauthor_data.lastName,
+                        email=coauthor_data.email,
+                        institution=coauthor_data.institution,
+                        orcid_id=coauthor_data.orcidId
+                    )
+                    coauthors_to_create.append(coauthor)
+
+                created_coauthors = await self.repository.create_coauthors(coauthors_to_create)
+                coauthor_responses = [
+                    CoauthorResponse(
+                        id=c.id,
+                        firstName=c.first_name,
+                        lastName=c.last_name,
+                        email=c.email,
+                        institution=c.institution,
+                        orcidId=c.orcid_id,
+                        order=c.order
+                    ) for c in created_coauthors
+                ]
+                logger.info(f"Updated {len(created_coauthors)} co-authors for manuscript {manuscript_id}")
+        else:
+            # Load existing co-authors for response
+            coauthors = await self.repository.get_coauthors_by_manuscript(manuscript_id)
+            coauthor_responses = [
+                CoauthorResponse(
+                    id=c.id,
+                    firstName=c.first_name,
+                    lastName=c.last_name,
+                    email=c.email,
+                    institution=c.institution,
+                    orcidId=c.orcid_id,
+                    order=c.order
+                ) for c in coauthors
+            ]
+
         # Update status to RE_SUBMITTED
         manuscript.status = ManuscriptStatus.RE_SUBMITTED
         manuscript.last_revision_at = datetime.utcnow()
@@ -573,6 +715,7 @@ class ManuscriptService:
             status=updated_manuscript.status,
             pdfFilename=updated_manuscript.pdf_filename,
             docxFilename=updated_manuscript.docx_filename,
+            coauthors=coauthor_responses,
             createdAt=updated_manuscript.created_at,
             updatedAt=updated_manuscript.updated_at
         )
@@ -686,6 +829,20 @@ class ManuscriptService:
         except Exception as e:
             logger.error(f"Échec critique lors de l'envoi des emails de soumission DOCX: {str(e)}", exc_info=True)
 
+        # Load co-authors for response
+        coauthors = await self.repository.get_coauthors_by_manuscript(manuscript_id)
+        coauthor_responses = [
+            CoauthorResponse(
+                id=c.id,
+                firstName=c.first_name,
+                lastName=c.last_name,
+                email=c.email,
+                institution=c.institution,
+                orcidId=c.orcid_id,
+                order=c.order
+            ) for c in coauthors
+        ]
+
         return ManuscriptResponse(
             id=updated_manuscript.id,
             title=updated_manuscript.title,
@@ -697,6 +854,7 @@ class ManuscriptService:
             status=updated_manuscript.status,
             pdfFilename=updated_manuscript.pdf_filename,
             docxFilename=updated_manuscript.docx_filename,
+            coauthors=coauthor_responses,
             createdAt=updated_manuscript.created_at,
             updatedAt=updated_manuscript.updated_at
         )

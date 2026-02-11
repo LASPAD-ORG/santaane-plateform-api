@@ -120,3 +120,8 @@ CLAUDE.md
 # Uploaded files
 app/uploads/*
 !app/uploads/.gitkeep
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+

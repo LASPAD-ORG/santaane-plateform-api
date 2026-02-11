@@ -12,6 +12,7 @@ from app.models.section import Section
 from app.models.language import Language
 from app.models.user import User
 from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
+from app.models.coauthor import Coauthor
 
 
 class ManuscriptRepository:
@@ -58,20 +59,21 @@ class ManuscriptRepository:
     async def get_manuscript_by_id(self, manuscript_id: int) -> Optional[Manuscript]:
         """
         Get manuscript by ID with relationships loaded
-        
+
         Args:
             manuscript_id: ID of the manuscript to retrieve
-            
+
         Returns:
             Optional[Manuscript]: The manuscript with its relationships loaded, or None if not found
         """
         from sqlalchemy.orm import selectinload, joinedload
-        
+
         result = await self.session.execute(
             select(Manuscript)
             .options(
                 joinedload(Manuscript.language),
-                selectinload(Manuscript.author)
+                selectinload(Manuscript.author),
+                selectinload(Manuscript.coauthors)
             )
             .where(Manuscript.id == manuscript_id)
             .execution_options(populate_existing=True)
@@ -184,3 +186,29 @@ class ManuscriptRepository:
         )
         result = await self.session.execute(query)
         return list(result.scalars().all())
+
+    async def create_coauthors(self, coauthors: List[Coauthor]) -> List[Coauthor]:
+        """Create multiple co-authors"""
+        for coauthor in coauthors:
+            self.session.add(coauthor)
+        await self.session.commit()
+        for coauthor in coauthors:
+            await self.session.refresh(coauthor)
+        return coauthors
+
+    async def get_coauthors_by_manuscript(self, manuscript_id: int) -> List[Coauthor]:
+        """Get all co-authors for a manuscript ordered by their order field"""
+        result = await self.session.execute(
+            select(Coauthor)
+            .where(Coauthor.manuscript_id == manuscript_id)
+            .order_by(Coauthor.order)
+        )
+        return list(result.scalars().all())
+
+    async def delete_coauthors_by_manuscript(self, manuscript_id: int) -> None:
+        """Delete all co-authors for a manuscript"""
+        from sqlalchemy import delete
+        await self.session.execute(
+            delete(Coauthor).where(Coauthor.manuscript_id == manuscript_id)
+        )
+        await self.session.commit()
