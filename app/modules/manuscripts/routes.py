@@ -2,7 +2,8 @@
 Manuscripts module - API routes
 Handles HTTP endpoints for manuscript operations
 """
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.modules.manuscripts.schemas import (
     ManuscriptSubmit, 
@@ -17,9 +18,12 @@ from app.modules.manuscripts.schemas import (
 from app.modules.manuscripts.service import ManuscriptService
 from app.modules.manuscripts.utils import get_manuscript_service
 from app.core.security import get_current_user
-from app.core.permissions import require_role
+from app.core.permissions import require_editor_or_manuscript_author, require_role
 from app.core.roles import UserRole
 from app.models.user import User
+from app.modules.auth.repository import AuthRepository
+from app.modules.auth.error_codes import AuthErrorCode
+from app.db import get_db
 
 router = APIRouter(prefix="/manuscripts", tags=["Manuscripts"])
 
@@ -140,29 +144,45 @@ async def get_manuscript_detail_for_staff(
 
 @router.put(
     "/detail/{manuscript_id}",
-    response_model=ManuscriptDetailResponse,
-    dependencies=[Depends(require_role(UserRole.EDITOR))]
+    response_model=ManuscriptDetailResponse
 )
 async def update_manuscript_by_staff(
     manuscript_id: int,
     update_data: ManuscriptUpdate,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
     service: ManuscriptService = Depends(get_manuscript_service)
 ):
-    """
-    Update manuscript (all fields except status)
+    # Vérifier les permissions : EDITOR ou auteur du manuscrit
+    repository = AuthRepository(db)
+    user_roles = await repository.get_user_roles(current_user.id)
     
-    Requires EDITOR role (also accessible by SUPER_ADMIN)
+    # SUPER_ADMIN a accès automatique
+    if UserRole.SUPER_ADMIN.value in user_roles:
+        pass
+    # EDITOR a accès automatique
+    elif UserRole.EDITOR.value in user_roles:
+        pass
+    # AUTHOR doit être propriétaire du manuscrit
+    elif UserRole.AUTHOR.value in user_roles:
+        from app.models.manuscript import Manuscript
+        from sqlmodel import select
+        
+        query = select(Manuscript).where(Manuscript.id == manuscript_id)
+        result = await db.execute(query)
+        manuscript = result.scalar_one_or_none()
+        
+        if not manuscript or manuscript.author_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=AuthErrorCode.INSUFFICIENT_PERMISSIONS
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=AuthErrorCode.INSUFFICIENT_PERMISSIONS
+        )
     
-    Can update:
-    - title, abstract, keywords
-    - theme, section, language
-    - PDF filename
-    
-    Cannot update status (use separate status endpoint)
-    
-    - **manuscript_id**: ID of the manuscript to update
-    """
     return await service.update_manuscript_by_staff(
         manuscript_id=manuscript_id,
         update_data=update_data,
