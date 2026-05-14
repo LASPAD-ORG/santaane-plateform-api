@@ -52,9 +52,9 @@ class EmailService:
                         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
                             <!-- Header avec logo -->
                             <tr>
-                                <td style="background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); padding: 30px 40px; border-radius: 12px 12px 0 0; text-align: center;">
+                                <td style="background: #ffffff; padding: 30px 40px; border-radius: 12px 12px 0 0; text-align: center; border-bottom: 3px solid #59a498;">
                                     <img src="{cls.LOGO_URL}" alt="Global Africa Journal" style="height: 70px; width: auto; display: block; margin: 0 auto 15px auto;">
-                                    <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600;">{title}</h1>
+                                    <h1 style="color: #59a498; margin: 0; font-size: 22px; font-weight: 600;">{title}</h1>
                                 </td>
                             </tr>
                             
