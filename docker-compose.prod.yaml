@@ -39,7 +39,7 @@ services:
       - coolify.managed=true
       - coolify.type=application
       - traefik.enable=true
-      - traefik.http.routers.santaane-api.rule=Host(``)
+      - traefik.http.routers.santaane-api.rule=Host(`apitest.globalafricajournal.org`)
       - traefik.http.routers.santaane-api.entryPoints=https
       - traefik.http.routers.santaane-api.tls=true
       - traefik.http.routers.santaane-api.tls.certresolver=letsencrypt
