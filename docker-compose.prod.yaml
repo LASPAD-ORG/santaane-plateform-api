@@ -1,5 +1,5 @@
-﻿# =============================================================================
-# Santaane Platform - Production Docker Compose for Coolify (Sans PGBouncer)
+# =============================================================================
+# Santaane Platform - Production Docker Compose for Coolify
 # =============================================================================
 services:
   api:
@@ -11,11 +11,11 @@ services:
     volumes:
       - uploads_data:/app/app/uploads
     environment:
-      - DATABASE_URL=${DATABASE_URL:?postgresql+psycopg2://postgres:password@db:5432/santaane}
-      - POSTGRES_USER=${POSTGRES_USER:?postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
-      - POSTGRES_DB=${POSTGRES_DB:?santaane}
-      - SECRET_KEY=${SECRET_KEY:?}
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - SECRET_KEY=${SECRET_KEY}
       - ALGORITHM=${ALGORITHM:-HS256}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       - APP_NAME=${APP_NAME:-Santaane API}
@@ -39,7 +39,7 @@ services:
       - coolify.managed=true
       - coolify.type=application
       - traefik.enable=true
-      - traefik.http.routers.santaane-api.rule=Host(`${SERVICE_FQDN_API}`)
+      - traefik.http.routers.santaane-api.rule=Host(``)
       - traefik.http.routers.santaane-api.entryPoints=https
       - traefik.http.routers.santaane-api.tls=true
       - traefik.http.routers.santaane-api.tls.certresolver=letsencrypt
@@ -49,9 +49,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:?postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
-      - POSTGRES_DB=${POSTGRES_DB:?santaane}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_HOST_AUTH_METHOD=md5
       - POSTGRES_INITDB_ARGS=--auth-host=md5
     volumes:
