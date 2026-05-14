@@ -2,17 +2,17 @@ services:
   api:
     build: .
     container_name: santaane_api
-    env_file: .env  # All environment variables loaded from .env file
+    env_file: .env
+    entrypoint: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
       - "8000:8000"
     volumes:
-      # Mount source code for hot-reload
       - ./app:/app/app
       - ./alembic:/app/alembic
       - ./alembic.ini:/app/alembic.ini
+      - uploads_data:/app/app/uploads
     depends_on:
       - db
-    # Pass --reload flag to uvicorn via entrypoint
     command: ["--reload"]
 
   db:
@@ -29,3 +29,4 @@ services:
 
 volumes:
   pgdata:
+  uploads_data:
