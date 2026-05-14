@@ -14,7 +14,6 @@ logger = get_logger(__name__)
 class EmailService:
     """Service d'envoi d'emails"""
     
-    # Constantes
     DEFAULT_LANGUAGE = 'fr'
     
     # Configuration SMTP
@@ -31,7 +30,6 @@ class EmailService:
     # Branding
     LOGO_URL = "https://www.globalafricajournal.org/images/02-GA-Site-Page-Noir.gif"
     JOURNAL_NAME = "Global Africa"
-    PLATFORM_NAME = "Santaane Platform"
     LAB_NAME = "LASPAD"
     LAB_URL = "https://laspad.org/"
     SCIENCES_URL = "https://www.globalafricasciences.org/"
@@ -39,9 +37,6 @@ class EmailService:
 
     @classmethod
     def _get_base_template(cls, title: str, content: str, footer_text: str = "") -> str:
-        """
-        Template de base uniforme pour tous les emails Global Africa / Santaane
-        """
         return f"""
         <!DOCTYPE html>
         <html lang="fr">
@@ -58,9 +53,8 @@ class EmailService:
                             <!-- Header avec logo -->
                             <tr>
                                 <td style="background: linear-gradient(135deg, #59a498 0%, #4a8a7f 100%); padding: 30px 40px; border-radius: 12px 12px 0 0; text-align: center;">
-                                    <img src="{cls.LOGO_URL}" alt="Global Africa Journal" width="160" style="height: auto; max-height: 80px; width: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
+                                    <img src="{cls.LOGO_URL}" alt="Global Africa Journal" style="height: 70px; width: auto; display: block; margin: 0 auto 15px auto;">
                                     <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600;">{title}</h1>
-                                    <p style="color: rgba(255,255,255,0.8); margin: 6px 0 0 0; font-size: 13px;">{cls.PLATFORM_NAME} &mdash; {cls.LAB_NAME}</p>
                                 </td>
                             </tr>
                             
@@ -75,7 +69,6 @@ class EmailService:
                             <tr>
                                 <td style="background-color: #f8f9fa; padding: 25px 40px; border-radius: 0 0 12px 12px; text-align: center; border-top: 1px solid #eee;">
                                     {footer_text}
-                                    <!-- Liens du réseau LASPAD -->
                                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 15px 0;">
                                         <tr>
                                             <td align="center">
@@ -90,7 +83,7 @@ class EmailService:
                                         </tr>
                                     </table>
                                     <p style="color: #888; font-size: 12px; margin: 10px 0 0 0;">
-                                        &copy; 2025 {cls.JOURNAL_NAME} &mdash; {cls.PLATFORM_NAME} &mdash; {cls.LAB_NAME}. Tous droits réservés.
+                                        &copy; 2025 {cls.JOURNAL_NAME} &mdash; {cls.LAB_NAME}. Tous droits réservés.
                                     </p>
                                     <p style="color: #aaa; font-size: 11px; margin: 5px 0 0 0;">
                                         Cet email a été envoyé automatiquement, merci de ne pas y répondre directement.
@@ -169,13 +162,12 @@ class EmailService:
 
     @classmethod
     def send_otp_email(cls, to_email: str, otp_code: str) -> bool:
-        """Envoie le code de vérification OTP pour l'inscription"""
         subject = f"{otp_code} est votre code de vérification - {cls.JOURNAL_NAME}"
         
         content = f"""
         <div style="text-align: center;">
             <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
-                Merci de vous être inscrit sur <strong>{cls.PLATFORM_NAME}</strong>. 
+                Merci de vous être inscrit sur <strong>{cls.JOURNAL_NAME}</strong>. 
                 Utilisez le code ci-dessous pour vérifier votre email :
             </p>
             <div style="background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); padding: 25px 40px; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #ffffff; margin: 30px auto; border-radius: 10px; display: inline-block;">
@@ -199,8 +191,7 @@ class EmailService:
 
     @classmethod
     def send_account_activated_email(cls, to_email: str, full_name: str) -> bool:
-        """Envoie un email de bienvenue après l'activation du compte"""
-        subject = f"Bienvenue sur {cls.PLATFORM_NAME} - Votre compte est activé"
+        subject = f"Bienvenue sur {cls.JOURNAL_NAME} - Votre compte est activé"
         
         content = f"""
         <div style="color: #333;">
@@ -249,8 +240,7 @@ class EmailService:
 
     @classmethod
     def send_secure_reset_link(cls, to_email: str, full_name: str, reset_token: str) -> bool:
-        """Envoie le lien de réinitialisation avec avertissement d'expiration de 5 min"""
-        subject = f"Réinitialisation de votre mot de passe - {cls.PLATFORM_NAME}"
+        subject = f"Réinitialisation de votre mot de passe - {cls.JOURNAL_NAME}"
         reset_link = f"{cls.PLATFORM_URL}/reset-password?token={reset_token}"
         
         content = f"""
@@ -289,8 +279,7 @@ class EmailService:
 
     @classmethod
     def send_password_reset_email(cls, to_email: str, full_name: str, reset_token: str) -> bool:
-        """Send password reset email with reset link"""
-        subject = f"Réinitialisation de votre mot de passe - {cls.PLATFORM_NAME}"
+        subject = f"Réinitialisation de votre mot de passe - {cls.JOURNAL_NAME}"
         reset_link = f"{cls.PLATFORM_URL}/reset-password?token={reset_token}"
         
         content = f"""
@@ -328,8 +317,7 @@ class EmailService:
 
     @classmethod
     def send_new_user_credentials(cls, to_email: str, full_name: str, password: str, roles: str) -> bool:
-        """Send welcome email with login credentials for new users"""
-        subject = f"Bienvenue sur {cls.PLATFORM_NAME} - Vos identifiants de connexion"
+        subject = f"Bienvenue sur {cls.JOURNAL_NAME} - Vos identifiants de connexion"
         
         content = f"""
         <div style="color: #333;">
@@ -337,7 +325,7 @@ class EmailService:
                 Bonjour <strong>{full_name}</strong>,
             </p>
             <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Votre compte a été créé avec succès sur <strong>{cls.PLATFORM_NAME}</strong> — la plateforme de soumission et de gestion éditoriale de la revue <strong>{cls.JOURNAL_NAME}</strong>.
+                Votre compte a été créé avec succès sur la plateforme de soumission et de gestion éditoriale de la revue <strong>{cls.JOURNAL_NAME}</strong>.
             </p>
             <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
                 <h3 style="margin: 0 0 15px 0; color: {cls.PRIMARY_COLOR};">Vos identifiants de connexion</h3>
@@ -367,9 +355,6 @@ class EmailService:
                     Se connecter
                 </a>
             </div>
-            <p style="font-size: 14px; color: #666; margin-top: 30px;">
-                Si vous avez des questions, n'hésitez pas à nous contacter.
-            </p>
             <p style="font-size: 15px; margin-top: 25px;">
                 Cordialement,<br>
                 <strong style="color: {cls.PRIMARY_COLOR};">L'équipe {cls.JOURNAL_NAME}</strong>
@@ -377,13 +362,12 @@ class EmailService:
         </div>
         """
         
-        body = cls._get_base_template(f"Bienvenue sur {cls.PLATFORM_NAME}", content)
+        body = cls._get_base_template(f"Bienvenue sur {cls.JOURNAL_NAME}", content)
         return cls.send_email(to_email, subject, body)
 
     @classmethod
     def send_welcome_email(cls, to_email: str, full_name: str, password: str, role: str) -> bool:
-        """Send welcome email with login credentials"""
-        subject = f"Bienvenue sur {cls.PLATFORM_NAME} - Vos identifiants de connexion"
+        subject = f"Bienvenue sur {cls.JOURNAL_NAME} - Vos identifiants de connexion"
         
         content = f"""
         <div style="color: #333;">
@@ -391,7 +375,7 @@ class EmailService:
                 Bonjour <strong>{full_name}</strong>,
             </p>
             <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Votre compte a été créé avec succès sur <strong>{cls.PLATFORM_NAME}</strong>.
+                Votre compte a été créé avec succès sur <strong>{cls.JOURNAL_NAME}</strong>.
             </p>
             <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
                 <h3 style="margin: 0 0 15px 0; color: {cls.PRIMARY_COLOR};">Vos identifiants de connexion</h3>
@@ -421,9 +405,6 @@ class EmailService:
                     Se connecter
                 </a>
             </div>
-            <p style="font-size: 14px; color: #666; margin-top: 30px;">
-                Si vous avez des questions, n'hésitez pas à nous contacter.
-            </p>
             <p style="font-size: 15px; margin-top: 25px;">
                 Cordialement,<br>
                 <strong style="color: {cls.PRIMARY_COLOR};">L'équipe {cls.JOURNAL_NAME}</strong>
@@ -431,10 +412,10 @@ class EmailService:
         </div>
         """
         
-        body = cls._get_base_template(f"Bienvenue sur {cls.PLATFORM_NAME}", content)
+        body = cls._get_base_template(f"Bienvenue sur {cls.JOURNAL_NAME}", content)
         return cls.send_email(to_email, subject, body)
 
-#====================================
+    #====================================
     # EMAILS NOTIFICATIONS ÉVALUATEUR
     #====================================
 
@@ -653,7 +634,7 @@ class EmailService:
 
     @classmethod
     def send_inactive_user(cls, to_email: str, full_name: str, admin_name: str = None, admin_email: str = None) -> bool:
-        subject = f"Votre compte a été désactivé - {cls.PLATFORM_NAME}"
+        subject = f"Votre compte a été désactivé - {cls.JOURNAL_NAME}"
         admin_info = f"par l'administrateur <strong>{admin_name}</strong>" if admin_name else "par un administrateur"
         contact_info = f"veuillez contacter l'administrateur à l'adresse : <strong>{admin_email}</strong>" if admin_email else "veuillez contacter l'administrateur de la plateforme"
         
@@ -668,7 +649,7 @@ class EmailService:
                 </p>
             </div>
             <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                Votre compte sur {cls.PLATFORM_NAME} a été désactivé. Vous ne pourrez plus vous connecter avec vos identifiants actuels.
+                Votre compte sur {cls.JOURNAL_NAME} a été désactivé. Vous ne pourrez plus vous connecter avec vos identifiants actuels.
             </p>
             <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
                 Si vous pensez qu'il s'agit d'une erreur ou si vous avez des questions, {contact_info}.
@@ -690,15 +671,15 @@ class EmailService:
         if len(updated_fields) == 1:
             field_name = list(updated_fields.keys())[0]
             if field_name == 'password':
-                subject = f"Votre mot de passe a été réinitialisé - {cls.PLATFORM_NAME}"
+                subject = f"Votre mot de passe a été réinitialisé - {cls.JOURNAL_NAME}"
             elif field_name == 'is_active':
-                subject = f"Le statut de votre compte a été modifié - {cls.PLATFORM_NAME}"
+                subject = f"Le statut de votre compte a été modifié - {cls.JOURNAL_NAME}"
             elif field_name == 'roles':
-                subject = f"Vos rôles ont été modifiés - {cls.PLATFORM_NAME}"
+                subject = f"Vos rôles ont été modifiés - {cls.JOURNAL_NAME}"
             else:
-                subject = f"Votre {cls._get_field_display_name(field_name)} a été mis à jour - {cls.PLATFORM_NAME}"
+                subject = f"Votre {cls._get_field_display_name(field_name)} a été mis à jour - {cls.JOURNAL_NAME}"
         else:
-            subject = f"Votre profil a été mis à jour - {cls.PLATFORM_NAME}"
+            subject = f"Votre profil a été mis à jour - {cls.JOURNAL_NAME}"
         
         changes_content = ""
         if updated_fields:
@@ -1723,7 +1704,7 @@ class EmailService:
 
     #============
     # MAIL FOR SYSTEM
-    # ===========
+    #============
 
     @classmethod
     def send_system_submitted_docx_file(
@@ -1784,14 +1765,14 @@ class EmailService:
         if is_fr:
             subject = f"Nouvelle soumission - {manuscript_title[:50]}..."
             header_text = "Nouvelle soumission de manuscrit"
-            intro = f"Un nouvel article a été soumis sur {cls.PLATFORM_NAME} et nécessite votre attention."
+            intro = f"Un nouvel article a été soumis sur {cls.JOURNAL_NAME} et nécessite votre attention."
             id_label, titre_label, auteur_label = "ID Manuscrit", "Titre", "Auteur"
             section_label, theme_label = "Section", "Thème"
             btn_label = "Voir le manuscrit"
         else:
             subject = f"New submission - {manuscript_title[:50]}..."
             header_text = "New Manuscript Submission"
-            intro = f"A new article has been submitted on {cls.PLATFORM_NAME} and requires your attention."
+            intro = f"A new article has been submitted on {cls.JOURNAL_NAME} and requires your attention."
             id_label, titre_label, auteur_label = "Manuscript ID", "Title", "Author"
             section_label, theme_label = "Section", "Theme"
             btn_label = "View Manuscript"
