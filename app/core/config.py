@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
 
     # CORS - Loaded from environment as comma-separated string
     CORS_ORIGINS: str | List[str] = "http://localhost:3000,http://localhost:8080,http://localhost:5173"
