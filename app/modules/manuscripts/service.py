@@ -186,15 +186,63 @@ class ManuscriptService:
         manuscript_lang = language.code if language else 'fr'
         
         # Envoyer notification au système
-        EmailService.send_system_new_submission_notification(
-            manuscript_id=created_manuscript.id,
-            manuscript_title=created_manuscript.title,
-            author_name=author.full_name if author else "Auteur inconnu",
-            author_email=author.email if author else "",
-            section_name=section.name,
-            theme_name=theme.title if theme else None,
-            lang=manuscript_lang
-        )
+        try:
+            from app.models.user import User
+            from app.models.user_role import UserRole
+            from sqlalchemy import select as sa_select
+
+            # Récupérer tous les éditeurs actifs (role_id = 2)
+            editors_result = await self.repository.session.execute(
+                sa_select(User)
+                .join(UserRole, UserRole.user_id == User.id)
+                .where(UserRole.role_id == 2)
+                .where(User.is_active == True)
+            )
+            editors = editors_result.scalars().all()
+            editor_emails = [e.email for e in editors if e.email]
+
+            # Notifier l'adresse système
+            EmailService.send_system_new_submission_notification(
+                manuscript_id=created_manuscript.id,
+                manuscript_title=created_manuscript.title,
+                author_name=author.full_name if author else "Auteur inconnu",
+                author_email=author.email if author else "",
+                section_name=section.name,
+                theme_name=theme.title if theme else None,
+                lang=manuscript_lang
+            )
+
+            # Notifier chaque éditeur
+            for editor_email in editor_emails:
+                EmailService.send_email(
+                    to_email=editor_email,
+                    subject=f"Nouvelle soumission - {created_manuscript.title[:50]}...",
+                    body=EmailService._get_base_template(
+                        "Nouvelle soumission de manuscrit",
+                        f"""<div style="color: #333;">
+                        <p style="font-size: 15px;">Un nouvel article a été soumis et nécessite votre attention.</p>
+                        <table style="width:100%;border-collapse:collapse;margin:25px 0;">
+                            <tr><td style="padding:12px;background:#f5f5f5;border:1px solid #ddd;font-weight:bold;width:30%;">Titre</td>
+                                <td style="padding:12px;border:1px solid #ddd;"><strong>{created_manuscript.title}</strong></td></tr>
+                            <tr><td style="padding:12px;background:#f5f5f5;border:1px solid #ddd;font-weight:bold;">Auteur</td>
+                                <td style="padding:12px;border:1px solid #ddd;">{author.full_name if author else "Inconnu"} ({author.email if author else ""})</td></tr>
+                            <tr><td style="padding:12px;background:#f5f5f5;border:1px solid #ddd;font-weight:bold;">Section</td>
+                                <td style="padding:12px;border:1px solid #ddd;">{section.name}</td></tr>
+                            <tr><td style="padding:12px;background:#f5f5f5;border:1px solid #ddd;font-weight:bold;">ID</td>
+                                <td style="padding:12px;border:1px solid #ddd;">#{created_manuscript.id}</td></tr>
+                        </table>
+                        <div style="text-align:center;margin:35px 0;">
+                            <a href="https://www.globalafricajournal.org/dashboard/editor/manuscripts/{created_manuscript.id}"
+                               style="display:inline-block;padding:15px 40px;background:linear-gradient(135deg,#59a498 0%,#4a8a7f 100%);color:#ffffff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">
+                                Voir le manuscrit
+                            </a>
+                        </div></div>"""
+                    )
+                )
+            logger.info(f"Notifications envoyées à {len(editor_emails)} éditeur(s)")
+        except Exception as e:
+            logger.error(f"Erreur notification éditeurs: {str(e)}")
+	
         
         # Envoyer confirmation à l'auteur
         try:
