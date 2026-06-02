@@ -11,6 +11,7 @@ from app.models.language import Language
 from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 from app.models.manuscript import Manuscript
 from app.models.user import User
+from app.models.user_role import UserRole
 from app.models.enums import EvaluatorAssignmentStatus
 from app.core.email import EmailService
 from app.core.logging import logger
@@ -28,9 +29,8 @@ class EvaluatorAssignmentService:
         evaluation_deadline: datetime,
         assigned_by_id: int
      ) -> dict:
-        """Asaccsign an evaluator to a manuscript and send notification email"""
+        """Assign an evaluator to a manuscript and send notification email"""
         
-        # Check if manuscript exists
         manuscript_result = await self.db.execute(
             select(Manuscript).where(Manuscript.id == manuscript_id)
         )
@@ -41,14 +41,12 @@ class EvaluatorAssignmentService:
                 detail=f"Manuscript with ID {manuscript_id} not found"
             )
 
-        # CRITICAL: Verify that manuscript is anonymized before allowing assignment
         if not manuscript.is_anonymized:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot assign evaluator: manuscript must be anonymized first"
             )
 
-        # Check if evaluator exists and has EVALUATOR role (role_id = 3)
         evaluator_result = await self.db.execute(
             select(User).where(User.id == evaluator_id)
         )
@@ -59,7 +57,6 @@ class EvaluatorAssignmentService:
                 detail=f"Evaluator with ID {evaluator_id} not found"
             )
         
-        # Check if already assigned
         existing_assignment = await self.db.execute(
             select(ManuscriptEvaluatorLink).where(
                 ManuscriptEvaluatorLink.manuscript_id == manuscript_id,
@@ -72,8 +69,6 @@ class EvaluatorAssignmentService:
                 detail="This evaluator is already assigned to this manuscript"
             )
         
-        # Create assignment
-        # Remove timezone from evaluation_deadline to match database TIMESTAMP WITHOUT TIME ZONE
         if evaluation_deadline.tzinfo is not None:
             evaluation_deadline = evaluation_deadline.replace(tzinfo=None)
         
@@ -89,20 +84,15 @@ class EvaluatorAssignmentService:
         await self.db.commit()
         await self.db.refresh(assignment)
         
-        # Generate PDF URL (using uploads directory path)
         pdf_url = f"https://santaane.mansatoulo.fr/uploads/{manuscript.pdf_filename}"
-        
-        # Format deadline for email (French format: jj/mm/aaaa)
         deadline_str = evaluation_deadline.strftime("%d/%m/%Y")
         
-        # Get manuscript language for email
         language_result = await self.db.execute(
             select(Language).where(Language.id == manuscript.language_id)
         )
         language = language_result.scalar_one_or_none()
         manuscript_lang = language.code if language else 'fr'
         
-        # Send evaluation request email to evaluator
         email_sent = EmailService.send_evaluation_request_email(
             to_email=evaluator.email,
             evaluator_name=evaluator.full_name,
@@ -112,10 +102,9 @@ class EvaluatorAssignmentService:
             lang=manuscript_lang
         )
         
-        # Send notification to system about evaluator assignment
         try:
             EmailService.send_request_evaluation(
-                to_email="laspad-plateform@hamadouba.com",  # Email système
+                to_email="laspad-plateform@hamadouba.com",
                 evaluator_name=evaluator.full_name,
                 manuscript_title=manuscript.title,
                 manuscript_id=manuscript.id,
@@ -125,18 +114,14 @@ class EvaluatorAssignmentService:
             logger.info(f"System notification sent for evaluator assignment to manuscript {manuscript_id}")
         except Exception as e:
             logger.error(f"Failed to send system notification for evaluator assignment: {str(e)}")
-            # Don't fail the whole operation if notification fails
         
-        # Send notification to author about evaluator assignment
         try:
-            # Get author details
             author_result = await self.db.execute(
                 select(User).where(User.id == manuscript.author_id)
             )
             author = author_result.scalar_one_or_none()
             
             if author:
-                # Envoyer la notification à l'auteur (sans révéler l'identité de l'évaluateur)
                 EmailService.send_autor_manuscript_assigner_a_evaluator(
                     to_email=author.email,
                     author_name=author.full_name,
@@ -147,7 +132,6 @@ class EvaluatorAssignmentService:
                 logger.info(f"Author notification sent for evaluator assignment to manuscript {manuscript_id}")
         except Exception as e:
             logger.error(f"Failed to send author notification for evaluator assignment: {str(e)}")
-            # Don't fail the whole operation if notification fails
         
         if not email_sent:
             logger.warning(f"Failed to send evaluation request email to {evaluator.email}")
@@ -174,7 +158,6 @@ class EvaluatorAssignmentService:
      ) -> dict:
         """Evaluator accepts or declines an assignment"""
         
-        # Get assignment
         result = await self.db.execute(
             select(ManuscriptEvaluatorLink).where(
                 ManuscriptEvaluatorLink.manuscript_id == manuscript_id,
@@ -195,7 +178,6 @@ class EvaluatorAssignmentService:
                 detail=f"Assignment already {assignment.status.value}"
             )
         
-        # Get manuscript and evaluator details for email notification
         manuscript_result = await self.db.execute(
             select(Manuscript).where(Manuscript.id == manuscript_id)
         )
@@ -207,20 +189,18 @@ class EvaluatorAssignmentService:
         evaluator = evaluator_result.scalar_one_or_none()
         
         if accept:
-            # Accept assignment
             assignment.status = EvaluatorAssignmentStatus.ACCEPTED
             assignment.response_at = datetime.now(timezone.utc).replace(tzinfo=None)
             await self.db.commit()
             
-            # Get manuscript language for notifications
             language_result = await self.db.execute(
                 select(Language).where(Language.id == manuscript.language_id)
             )
             language = language_result.scalar_one_or_none()
             manuscript_lang = language.code if language else 'fr'
             
-            # Send notification to system
             try:
+                # Notification système
                 EmailService.send_evaluator_response_notification(
                     manuscript_id=manuscript_id,
                     manuscript_title=manuscript.title if manuscript else f"Manuscrit #{manuscript_id}",
@@ -231,16 +211,14 @@ class EvaluatorAssignmentService:
                 )
                 logger.info(f"Evaluator acceptance notification sent for manuscript {manuscript_id} in {manuscript_lang}")
                 
-                # Send notification to author about evaluator's acceptance
+                # Notification auteur
                 if manuscript and evaluator:
                     try:
                         author_result = await self.db.execute(
                             select(User).where(User.id == manuscript.author_id)
                         )
                         author = author_result.scalar_one_or_none()
-                        
                         if author:
-                            # Notifier l'auteur de l'acceptation (sans révéler l'identité de l'évaluateur)
                             EmailService.send_autor_reponse_evalutor_to_assignation(
                                 to_email=author.email,
                                 author_name=author.full_name,
@@ -252,6 +230,41 @@ class EvaluatorAssignmentService:
                             logger.info(f"Author notification sent for evaluator acceptance of manuscript {manuscript_id}")
                     except Exception as e:
                         logger.error(f"Failed to send author notification for evaluator acceptance: {str(e)}")
+                
+                # Notification éditeurs
+                try:
+                    editors_result = await self.db.execute(
+                        select(User)
+                        .join(UserRole, UserRole.user_id == User.id)
+                        .where(UserRole.role_id == 2)
+                        .where(User.is_active == True)
+                    )
+                    editors = editors_result.scalars().all()
+                    for editor in editors:
+                        if editor.email:
+                            EmailService.send_email(
+                                to_email=editor.email,
+                                subject=f"Évaluateur a accepté - {manuscript.title[:50] if manuscript else ''}...",
+                                body=EmailService._get_base_template(
+                                    "Demande d'évaluation acceptée",
+                                    f"""<div style="color:#333;">
+                                    <p>L'évaluateur <strong>{evaluator.full_name if evaluator else 'Évaluateur'}</strong> a <strong style="color:#59a498;">accepté</strong> d'évaluer le manuscrit :</p>
+                                    <div style="background:#f8f9fa;border-left:4px solid #59a498;padding:20px;border-radius:8px;margin:25px 0;">
+                                        <h3 style="margin:0;color:#59a498;">"{manuscript.title if manuscript else ''}"</h3>
+                                        <p style="margin:10px 0 0 0;font-size:14px;color:#666;">ID : #{manuscript_id}</p>
+                                    </div>
+                                    <div style="text-align:center;margin:35px 0;">
+                                        <a href="https://www.globalafricajournal.org/dashboard/editor/manuscripts/{manuscript_id}"
+                                           style="display:inline-block;padding:15px 40px;background:linear-gradient(135deg,#59a498 0%,#4a8a7f 100%);color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">
+                                            Voir le manuscrit
+                                        </a>
+                                    </div></div>"""
+                                )
+                            )
+                    logger.info(f"Notifications envoyées à {len(editors)} éditeur(s) (accept)")
+                except Exception as e:
+                    logger.error(f"Erreur notification éditeurs (accept): {str(e)}")
+                    
             except Exception as e:
                 logger.error(f"Failed to send evaluator acceptance notifications: {str(e)}")
             
@@ -260,19 +273,17 @@ class EvaluatorAssignmentService:
                 "status": "accepted"
             }
         else:
-            # Decline and delete assignment
             await self.db.delete(assignment)
             await self.db.commit()
             
-            # Get manuscript language for notifications
             language_result = await self.db.execute(
                 select(Language).where(Language.id == manuscript.language_id)
             )
             language = language_result.scalar_one_or_none()
             manuscript_lang = language.code if language else 'fr'
             
-            # Send notification to system
             try:
+                # Notification système
                 EmailService.send_evaluator_response_notification(
                     manuscript_id=manuscript_id,
                     manuscript_title=manuscript.title if manuscript else f"Manuscrit #{manuscript_id}",
@@ -283,16 +294,14 @@ class EvaluatorAssignmentService:
                 )
                 logger.info(f"Evaluator decline notification sent for manuscript {manuscript_id} in {manuscript_lang}")
                 
-                # Send notification to author about evaluator's decline
+                # Notification auteur
                 if manuscript and evaluator:
                     try:
                         author_result = await self.db.execute(
                             select(User).where(User.id == manuscript.author_id)
                         )
                         author = author_result.scalar_one_or_none()
-                        
                         if author:
-                            # Notifier l'auteur du refus (sans révéler l'identité de l'évaluateur)
                             EmailService.send_autor_reponse_evalutor_to_assignation(
                                 to_email=author.email,
                                 author_name=author.full_name,
@@ -304,6 +313,44 @@ class EvaluatorAssignmentService:
                             logger.info(f"Author notification sent for evaluator decline of manuscript {manuscript_id}")
                     except Exception as e:
                         logger.error(f"Failed to send author notification for evaluator decline: {str(e)}")
+                
+                # Notification éditeurs
+                try:
+                    editors_result = await self.db.execute(
+                        select(User)
+                        .join(UserRole, UserRole.user_id == User.id)
+                        .where(UserRole.role_id == 2)
+                        .where(User.is_active == True)
+                    )
+                    editors = editors_result.scalars().all()
+                    for editor in editors:
+                        if editor.email:
+                            EmailService.send_email(
+                                to_email=editor.email,
+                                subject=f"Évaluateur a refusé - {manuscript.title[:50] if manuscript else ''}...",
+                                body=EmailService._get_base_template(
+                                    "Demande d'évaluation refusée",
+                                    f"""<div style="color:#333;">
+                                    <p>L'évaluateur <strong>{evaluator.full_name if evaluator else 'Évaluateur'}</strong> a <strong style="color:#dc3545;">refusé</strong> d'évaluer le manuscrit :</p>
+                                    <div style="background:#f8f9fa;border-left:4px solid #dc3545;padding:20px;border-radius:8px;margin:25px 0;">
+                                        <h3 style="margin:0;color:#dc3545;">"{manuscript.title if manuscript else ''}"</h3>
+                                        <p style="margin:10px 0 0 0;font-size:14px;color:#666;">ID : #{manuscript_id}</p>
+                                    </div>
+                                    <div style="background:#fff3cd;border-left:4px solid #ffc107;padding:15px;border-radius:8px;margin:25px 0;">
+                                        <p style="margin:0;font-size:14px;color:#856404;"><strong>Action requise :</strong> Veuillez assigner un nouvel évaluateur.</p>
+                                    </div>
+                                    <div style="text-align:center;margin:35px 0;">
+                                        <a href="https://www.globalafricajournal.org/dashboard/editor/manuscripts/{manuscript_id}"
+                                           style="display:inline-block;padding:15px 40px;background:linear-gradient(135deg,#59a498 0%,#4a8a7f 100%);color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">
+                                            Assigner un évaluateur
+                                        </a>
+                                    </div></div>"""
+                                )
+                            )
+                    logger.info(f"Notifications envoyées à {len(editors)} éditeur(s) (decline)")
+                except Exception as e:
+                    logger.error(f"Erreur notification éditeurs (decline): {str(e)}")
+                    
             except Exception as e:
                 logger.error(f"Failed to send evaluator decline notifications: {str(e)}")
             
@@ -319,7 +366,6 @@ class EvaluatorAssignmentService:
      ) -> dict:
         """Send reminder email to evaluator who hasn't responded"""
 
-        # Get assignment
         result = await self.db.execute(
             select(ManuscriptEvaluatorLink).where(
                 ManuscriptEvaluatorLink.manuscript_id == manuscript_id,
@@ -334,14 +380,12 @@ class EvaluatorAssignmentService:
                 detail="Assignment not found"
             )
 
-        # Only send reminder if status is PENDING
         if assignment.status != EvaluatorAssignmentStatus.PENDING:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot send reminder: assignment status is {assignment.status.value}"
             )
 
-        # Get manuscript and evaluator details
         manuscript_result = await self.db.execute(
             select(Manuscript).where(Manuscript.id == manuscript_id)
         )
@@ -364,17 +408,14 @@ class EvaluatorAssignmentService:
                 detail=f"Evaluator with ID {evaluator_id} not found"
             )
 
-        # Format deadline for email (French format: jj/mm/aaaa)
         deadline_str = assignment.evaluation_deadline.strftime("%d/%m/%Y")
         
-        # Get manuscript language for email
         language_result = await self.db.execute(
             select(Language).where(Language.id == manuscript.language_id)
         )
         language = language_result.scalar_one_or_none()
         language_code = language.code.lower() if language else 'fr'
 
-        # Send reminder email to evaluator
         email_sent = EmailService.send_evaluation_reminder_email(
             to_email=evaluator.email,
             evaluator_name=evaluator.full_name,
@@ -383,20 +424,16 @@ class EvaluatorAssignmentService:
             lang=language_code
         )
         
-        # Send notification to author about reminder
         try:
-            # Get author details
             author_result = await self.db.execute(
                 select(User).where(User.id == manuscript.author_id)
             )
             author = author_result.scalar_one_or_none()
             
             if author:
-                # Calculate days remaining until deadline
                 days_remaining = (assignment.evaluation_deadline - datetime.now(timezone.utc).replace(tzinfo=None)).days
-                days_remaining = max(0, days_remaining)  # Ensure it's not negative
+                days_remaining = max(0, days_remaining)
                 
-                # Envoyer un rappel à l'auteur (sans révéler l'identité de l'évaluateur)
                 EmailService.send_autor_reminder_evalutor(
                     to_email=author.email,
                     author_name=author.full_name,
@@ -407,7 +444,6 @@ class EvaluatorAssignmentService:
                 logger.info(f"Author notification sent for evaluator reminder for manuscript {manuscript_id}")
         except Exception as e:
             logger.error(f"Failed to send author notification for evaluator reminder: {str(e)}")
-            # Don't fail the whole operation if notification fails
 
         if not email_sent:
             logger.warning(f"Failed to send reminder email to {evaluator.email}")
