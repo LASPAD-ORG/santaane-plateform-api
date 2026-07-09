@@ -163,34 +163,13 @@ async def create_evaluator(
 async def list_evaluators(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Items per page"),
+    type: str = Query("external", pattern="^(internal|external)$", description="Type d'évaluateur"),
     service: UserService = Depends(get_user_service)
 ):
-    """
-    Get a paginated list of all evaluators with their information.
-
-    **Requires:** EDITOR or SUPER_ADMIN role
-
-    **Query Parameters:**
-    - **page**: Page number (default: 1)
-    - **size**: Items per page (default: 20, max: 100)
-
-    **Returns:** Paginated list of evaluators with:
-    - id
-    - email
-    - fullName
-    - orcidId
-    - bio
-    - position
-    - institution
-    - emailVerified
-    - isActive
-    - profilePhoto
-    - roles (list of assigned roles)
-    - createdAt
-    - updatedAt
-    """
+    ...
     skip = (page - 1) * size
-    return await service.list_evaluators(skip=skip, limit=size)
+    role_name = "INTERNAL_EVALUATOR" if type == "internal" else "EVALUATOR"
+    return await service.list_evaluators(skip=skip, limit=size, role_name=role_name)
 
 
 @router.delete(

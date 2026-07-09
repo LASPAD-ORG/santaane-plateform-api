@@ -4,10 +4,10 @@ ManuscriptEvaluatorLink model - Table pivot Manuscript <-> Evaluator
 from __future__ import annotations
 
 from sqlmodel import SQLModel, Field, Relationship, Column
-from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy import Enum as SQLAlchemyEnum, String
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
-from app.models.enums import EvaluatorAssignmentStatus
+from app.models.enums import EvaluatorAssignmentStatus, EvaluatorKind
 
 if TYPE_CHECKING:
     from app.models.manuscript import Manuscript
@@ -54,6 +54,16 @@ class ManuscriptEvaluatorLink(SQLModel, table=True):
             nullable=False,
             default=EvaluatorAssignmentStatus.PENDING.value
         )
+    )
+    kind: str = Field(
+        default=EvaluatorKind.EXTERNAL.value,
+        sa_column=Column(
+            String(20),
+            nullable=False,
+            server_default=EvaluatorKind.EXTERNAL.value,  # rétrocompat: liens existants = external
+            index=True,
+        ),
+        description="Type d'assignation: 'internal' (pré-examen) ou 'external' (évaluation)",
     )
 
     response_at: Optional[datetime] = Field(

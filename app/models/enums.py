@@ -154,3 +154,8 @@ class UserStatus(str, Enum):
     INACTIVE = "inactive"
     SUSPENDED = "suspended"
     PENDING_VERIFICATION = "pending_verification"
+
+class EvaluatorKind(str, Enum):
+    """Distingue une assignation d'évaluateur interne (pré-examen) vs externe (évaluation)"""
+    INTERNAL = "internal"
+    EXTERNAL = "external"

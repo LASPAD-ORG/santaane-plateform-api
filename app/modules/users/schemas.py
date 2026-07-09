@@ -120,3 +120,18 @@ class UserFilters(BaseSchema):
     full_name: Optional[str] = Field(None, description="Filter by name (partial match)", alias="fullName")
     role: Optional[str] = Field(None, description="Filter by role name")
     is_active: Optional[bool] = Field(None, description="Filter by active status", alias="isActive")
+    
+    
+class EvaluatorCreate(BaseSchema):
+    """Schema for creating an evaluator (by editor)."""
+    email: EmailStr = Field(..., description="Evaluator email address")
+    full_name: str = Field(..., min_length=1, max_length=150, description="Evaluator full name", alias="fullName")
+    orcid_id: Optional[str] = Field(None, max_length=50, description="ORCID identifier", alias="orcidId")
+    bio: Optional[str] = Field(None, description="Evaluator biography")
+    position: Optional[str] = Field(None, max_length=150, description="Current position")
+    institution: Optional[str] = Field(None, max_length=255, description="Institution name")
+    evaluator_type: str = Field(                       # ← nouveau
+        default="external",
+        alias="evaluatorType",
+        description="Type d'évaluateur : 'external' (défaut) ou 'internal'",
+    )

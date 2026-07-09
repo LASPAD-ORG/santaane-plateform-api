@@ -170,15 +170,28 @@ class UserService:
         
         user = await self.repository.create_user_model(user_data)
         
-        # Assign EVALUATOR role (role_id = 3)
-        await self.repository.assign_role(user.id, 3, current_user.id)
-        
+        # Résoudre le rôle selon le type demandé ('internal' ou 'external')
+        evaluator_type = (data.evaluator_type or "external").lower()
+        if evaluator_type not in ("internal", "external"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="evaluatorType must be 'internal' or 'external'"
+            )
+        role_name = "INTERNAL_EVALUATOR" if evaluator_type == "internal" else "EVALUATOR"
+        role = await self.repository.get_role_by_name(role_name)
+        if role is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Role '{role_name}' introuvable en base. Seed-le d'abord."
+            )
+        await self.repository.assign_role(user.id, role.id, current_user.id)
+
         # Send welcome email with credentials
         email_sent = EmailService.send_welcome_email(
             to_email=data.email,
             full_name=data.full_name,
             password=password,
-            role="EVALUATOR"
+            role=role_name
         )
         
         if not email_sent:
@@ -227,12 +240,14 @@ class UserService:
     async def list_evaluators(
         self,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        role_name: str = "EVALUATOR",
      ) -> PaginatedResponse[UserWithRolesResponse]:
         """List all evaluators with pagination."""
         evaluators, total = await self.repository.get_all_evaluators(
             skip=skip,
-            limit=limit
+            limit=limit,
+            role_name=role_name,
         )
 
         # Convert evaluators with roles
@@ -258,7 +273,7 @@ class UserService:
             limit=limit,
             has_more=(skip + limit) < total
         )
-
+        
     async def list_users(
         self,
         skip: int = 0,
