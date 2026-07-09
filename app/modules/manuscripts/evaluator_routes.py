@@ -60,7 +60,7 @@ async def assign_evaluator_to_manuscript(
 
 @router.put(
     "/{manuscript_id}/evaluator-response",
-    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.SUPER_ADMIN))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR, UserRole.SUPER_ADMIN))],
     summary="Accept or decline evaluation assignment"
 )
 async def respond_to_evaluation_assignment(
