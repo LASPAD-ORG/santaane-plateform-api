@@ -125,6 +125,7 @@ class ManuscriptResponse(BaseModel):
     isAnonymized: bool = Field(default=False)
     anonymizedAt: Optional[datetime] = None
     anonymizedByName: Optional[str] = None
+    isInternallyValidated: bool = Field(default=False)
     createdAt: datetime
     updatedAt: datetime
 
@@ -152,6 +153,7 @@ class ManuscriptDetailResponse(BaseModel):
     isAnonymized: bool = Field(default=False)
     anonymizedAt: Optional[datetime] = None
     anonymizedByName: Optional[str] = None
+    isInternallyValidated: bool = Field(default=False)
     createdAt: datetime
     updatedAt: datetime
 

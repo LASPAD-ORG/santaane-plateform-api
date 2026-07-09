@@ -18,12 +18,12 @@ from app.modules.manuscripts.schemas import (
 from app.modules.manuscripts.service import ManuscriptService
 from app.modules.manuscripts.utils import get_manuscript_service
 from app.core.security import get_current_user
-from app.core.permissions import require_editor_or_manuscript_author, require_role
 from app.core.roles import UserRole
 from app.models.user import User
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.error_codes import AuthErrorCode
 from app.db import get_db
+from app.core.permissions import require_editor_or_manuscript_author, require_role, require_any_role
 
 router = APIRouter(prefix="/manuscripts", tags=["Manuscripts"])
 
@@ -227,7 +227,7 @@ async def update_manuscript_status(
 @router.get(
     "/my-assignments",
     response_model=List[EvaluatorManuscriptResponse],
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR))],
     summary="Get my manuscript assignments (Evaluator)"
 )
 async def get_my_assignments(

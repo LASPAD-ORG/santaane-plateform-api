@@ -117,21 +117,26 @@ class UserRepository:
     async def get_all_evaluators(
         self,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        role_name: str = "EVALUATOR",
     ) -> Tuple[List[User], int]:
         """
-        Get all users with EVALUATOR role.
+        Get all users having the given evaluator role
+        ('EVALUATOR' ou 'INTERNAL_EVALUATOR').
 
         Returns:
             Tuple of (evaluators list, total count)
         """
-        # Subquery to get user IDs with EVALUATOR role (role_id = 3)
+        # Résolution dynamique de l'ID du rôle par son nom
+        role = await self.get_role_by_name(role_name)
+        if role is None:
+            return [], 0
+
         evaluator_subquery = (
             select(UserRole.user_id)
-            .where(UserRole.role_id == 3)
+            .where(UserRole.role_id == role.id)
         )
-        
-        # Build query for evaluators
+
         query = (
             select(User)
             .where(User.id.in_(evaluator_subquery))
@@ -139,22 +144,20 @@ class UserRepository:
                 selectinload(User.user_roles).selectinload(UserRole.role)
             )
         )
-        
-        # Get total count
+
         count_query = (
             select(func.count())
             .select_from(User)
             .where(User.id.in_(evaluator_subquery))
         )
-        
+
         total_result = await self.db.execute(count_query)
         total = total_result.scalar()
-        
-        # Get paginated results
+
         query = query.offset(skip).limit(limit).order_by(User.created_at.desc())
         result = await self.db.execute(query)
         evaluators = result.scalars().all()
-        
+
         return list(evaluators), total
 
     async def create(self, data: UserCreate, password_hash: str) -> User:
@@ -292,5 +295,12 @@ class UserRepository:
         """Get role by ID."""
         result = await self.db.execute(
             select(Role).where(Role.id == role_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def get_role_by_name(self, name: str) -> Optional[Role]:
+        """Get role by name (ex. 'EVALUATOR', 'INTERNAL_EVALUATOR')."""
+        result = await self.db.execute(
+            select(Role).where(Role.name == name)
         )
         return result.scalar_one_or_none()

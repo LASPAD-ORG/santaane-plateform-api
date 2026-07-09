@@ -453,6 +453,8 @@ class ManuscriptService:
                     docxFilename=manuscript.docx_filename,
                     evaluators=evaluator_assignments,
                     coauthors=coauthor_responses,
+                    isAnonymized=manuscript.is_anonymized,
+                    isInternallyValidated=manuscript.is_internally_validated,
                     createdAt=manuscript.created_at,
                     updatedAt=manuscript.updated_at
                 )
@@ -586,6 +588,8 @@ class ManuscriptService:
             pdfFilename=manuscript.pdf_filename,
             docxFilename=manuscript.docx_filename,
             coauthors=coauthor_responses,
+            isAnonymized=manuscript.is_anonymized,
+            isInternallyValidated=manuscript.is_internally_validated,
             createdAt=manuscript.created_at,
             updatedAt=manuscript.updated_at
         )

@@ -125,3 +125,6 @@ __pycache__/
 *.pyc
 *.pyo
 
+
+# Seed de test local (ne jamais committer)
+app/test_seed.py

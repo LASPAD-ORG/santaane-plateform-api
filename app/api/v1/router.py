@@ -18,6 +18,7 @@ from app.modules.languages import router as languages_router
 from app.modules.sections import router as sections_router
 from app.modules.dashboards import router as dashboards_router
 from app.modules.public import routes as public_routes
+from app.modules.manuscripts import proposal_routes
 
 # Create main v1 router
 router = APIRouter(prefix="/api/v1")
@@ -32,7 +33,7 @@ router.include_router(annotation_routes.router)
 router.include_router(evaluation_grid_routes.router)
 router.include_router(redaction_routes.router)
 router.include_router(editorial_routes.router) # Inclusion de votre module éditorial
-
+router.include_router(proposal_routes.router)
 # --- Bloc Configuration & Dashboards ---
 router.include_router(themes_router)
 router.include_router(languages_router)

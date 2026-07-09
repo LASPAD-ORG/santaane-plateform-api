@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, status
 from typing import List
 from app.db import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.permissions import require_role, get_current_user
 from app.core.roles import UserRole
 from app.models.user import User
 from app.modules.manuscripts.annotation_schemas import (
@@ -15,6 +14,8 @@ from app.modules.manuscripts.annotation_schemas import (
     RedactionMaskResponse
 )
 from app.modules.manuscripts.annotation_service import AnnotationService
+from app.core.permissions import require_role, require_any_role
+from app.core.permissions import require_role, get_current_user
 
 
 router = APIRouter(prefix="/manuscripts", tags=["Manuscript Annotations"])
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/manuscripts", tags=["Manuscript Annotations"])
     "/{manuscript_id}/annotations",
     response_model=AnnotationResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR))],
     summary="Create annotation on manuscript"
 )
 async def create_annotation(
@@ -61,7 +62,7 @@ async def create_annotation(
 @router.get(
     "/{manuscript_id}/annotations",
     response_model=List[AnnotationResponse],
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR))],
     summary="Get my annotations for manuscript"
 )
 async def get_my_annotations(
@@ -86,7 +87,7 @@ async def get_my_annotations(
 @router.put(
     "/annotations/{annotation_id}",
     response_model=AnnotationResponse,
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR))],
     summary="Update annotation"
 )
 async def update_annotation(
@@ -117,7 +118,7 @@ async def update_annotation(
 @router.delete(
     "/annotations/{annotation_id}",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR))],
     summary="Delete annotation"
 )
 async def delete_annotation(
@@ -145,7 +146,7 @@ async def delete_annotation(
 @router.get(
     "/{manuscript_id}/redaction-masks",
     response_model=List[RedactionMaskResponse],
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR))],
     summary="Get redaction masks for evaluator view"
 )
 async def get_redaction_masks(

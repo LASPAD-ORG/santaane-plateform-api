@@ -4,9 +4,8 @@ Endpoints for evaluators to create, update, and submit evaluation grids
 """
 from fastapi import APIRouter, Depends, status
 from sqlmodel.ext.asyncio.session import AsyncSession
-
+from app.core.permissions import require_any_role, get_current_user, require_role
 from app.db import get_db
-from app.core.permissions import require_role, get_current_user
 from app.core.roles import UserRole
 from app.models.user import User
 from app.modules.manuscripts.evaluation_grid_service import EvaluationGridService
@@ -25,7 +24,7 @@ router = APIRouter(prefix="/manuscripts", tags=["Evaluation Grids"])
     "/{manuscript_id}/evaluation-grid",
     response_model=EvaluationGridResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR))],
     summary="Get evaluation grid",
     description="Retrieve the evaluation grid for a manuscript by the current evaluator"
 )
@@ -53,7 +52,7 @@ async def get_evaluation_grid_endpoint(
     "/{manuscript_id}/evaluation-grid",
     response_model=EvaluationGridResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR))],
     summary="Save evaluation grid (UPSERT)",
     description="Create or update the evaluation grid for a manuscript (draft mode)"
 )
@@ -85,7 +84,7 @@ async def save_evaluation_grid_endpoint(
     "/{manuscript_id}/submit-evaluation",
     response_model=SubmitEvaluationResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR))],
     summary="Submit evaluation",
     description="Submit the final evaluation (locks the grid from further modifications)"
 )

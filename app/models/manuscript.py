@@ -82,6 +82,19 @@ class Manuscript(SQLModel, table=True):
         foreign_key="users.id",
         description="ID de l'éditeur qui a marqué comme anonymisé"
     )
+    # --- Validation interne (pré-examen avant évaluation externe) ---
+    is_internally_validated: bool = Field(
+        default=False,
+        nullable=False,
+        index=True,
+        description="True si un évaluateur interne a validé le manuscrit pour évaluation externe",
+    )
+    internally_validated_at: Optional[datetime] = Field(default=None)
+    internally_validated_by_id: Optional[int] = Field(
+        default=None,
+        foreign_key="users.id",
+        description="ID de l'évaluateur interne qui a validé",
+    )
 
     # =========================
     # Relations ORM
@@ -124,6 +137,9 @@ class Manuscript(SQLModel, table=True):
     # Éditeur qui a anonymisé
     anonymized_by: Optional["User"] = Relationship(
         sa_relationship_kwargs={"foreign_keys": "[Manuscript.anonymized_by_id]"}
+    )
+    internally_validated_by: Optional["User"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[Manuscript.internally_validated_by_id]"}
     )
 
     editorial_versions: List["EditorialVersion"] = Relationship(

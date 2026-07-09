@@ -7,7 +7,7 @@ from app.models.city import City
 from app.models.country import Country
 from app.models.role import Role
 from app.models.user_role import UserRole
-
+from app.models.external_evaluator_proposal import ExternalEvaluatorProposal
 # Language model
 from app.models.language import Language
 
@@ -40,4 +40,5 @@ __all__ = [
     "ManuscriptEvaluationGrid",
     "EditorialVersion",
     "Coauthor",
+    "ExternalEvaluatorProposal",
 ]

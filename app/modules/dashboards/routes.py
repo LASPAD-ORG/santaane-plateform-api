@@ -4,7 +4,6 @@ dashboards module - API routes
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.security import get_current_user
-from app.core.permissions import require_role
 from app.core.roles import UserRole
 from app.models.user import User
 from app.modules.dashboards.schemas import (
@@ -17,6 +16,7 @@ from app.modules.dashboards.schemas import (
 from app.modules.dashboards.service import DashboardService
 from app.modules.dashboards.utils import get_dashboard_service
 from app.core.logging import get_logger
+from app.core.permissions import require_role, require_any_role
 
 logger = get_logger(__name__)
 
@@ -169,7 +169,7 @@ async def get_editor_dashboard(
 
 @router.get("/evaluator", response_model=EvaluatorDashboardResponse)
 async def get_evaluator_dashboard(
-    current_user: User = Depends(require_role(UserRole.EVALUATOR)),
+    current_user: User = Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR)),
     service: DashboardService = Depends(get_dashboard_service)
 ):
     """

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.permissions import require_any_role, get_current_user, require_role
 from app.core.roles import UserRole
 from app.models.user import User
+from app.models.enums import EvaluatorKind
 from app.modules.manuscripts.evaluator_schemas import (
     EvaluatorAssignRequest,
     EvaluatorResponseRequest
@@ -95,7 +96,7 @@ async def respond_to_evaluation_assignment(
     "/{manuscript_id}/evaluation-status",
     response_model=dict,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role(UserRole.EVALUATOR))],
+    dependencies=[Depends(require_any_role(UserRole.EVALUATOR, UserRole.INTERNAL_EVALUATOR))],
     summary="Get manuscript evaluation status for current evaluator"
 )
 async def get_manuscript_evaluation_status_for_evaluator(
@@ -171,4 +172,45 @@ async def send_reminder_to_evaluator(
     return await service.send_reminder_email(
         manuscript_id=manuscript_id,
         evaluator_id=evaluator_id
+    )
+
+
+@router.post(
+    "/{manuscript_id}/assign-internal-evaluator",
+    dependencies=[Depends(require_any_role(UserRole.EDITOR, UserRole.SUPER_ADMIN))],
+    summary="Assign an internal evaluator (pre-review) to a manuscript",
+)
+async def assign_internal_evaluator_to_manuscript(
+    manuscript_id: int,
+    data: EvaluatorAssignRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Assigne un évaluateur INTERNE. Gate : manuscrit anonymisé.
+    L'interne devra examiner + valider avant l'assignation d'externes."""
+    service = EvaluatorAssignmentService(db)
+    return await service.assign_evaluator(
+        manuscript_id=manuscript_id,
+        evaluator_id=data.evaluator_id,
+        evaluation_deadline=data.evaluation_deadline,
+        assigned_by_id=current_user.id,
+        kind=EvaluatorKind.INTERNAL.value,        # ← différence clé
+    )
+
+
+@router.post(
+    "/{manuscript_id}/internal-validation",
+    dependencies=[Depends(require_any_role(UserRole.INTERNAL_EVALUATOR, UserRole.SUPER_ADMIN))],
+    summary="Internal evaluator validates the manuscript for external review",
+)
+async def validate_manuscript_internally(
+    manuscript_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """L'évaluateur interne valide → débloque l'assignation d'externes."""
+    service = EvaluatorAssignmentService(db)
+    return await service.validate_internally(
+        manuscript_id=manuscript_id,
+        internal_evaluator_id=current_user.id,
     )
