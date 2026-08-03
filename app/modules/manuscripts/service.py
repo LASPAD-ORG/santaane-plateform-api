@@ -139,6 +139,7 @@ class ManuscriptService:
             language_id=manuscript_data.languageId,
             pdf_filename=manuscript_data.pdfFilename,
             docx_filename=manuscript_data.docxFilename,
+            initial_docx_filename=manuscript_data.initialDocxFilename,
             status=ManuscriptStatus.SUBMITTED
         )
 
@@ -270,6 +271,7 @@ class ManuscriptService:
             status=created_manuscript.status,
             pdfFilename=created_manuscript.pdf_filename,
             docxFilename=created_manuscript.docx_filename,
+            initialDocxFilename=created_manuscript.initial_docx_filename,
             coauthors=coauthor_responses,
             createdAt=created_manuscript.created_at,
             updatedAt=created_manuscript.updated_at
@@ -363,6 +365,7 @@ class ManuscriptService:
                     status=manuscript.status,
                     pdfFilename=manuscript.pdf_filename,
                     docxFilename=manuscript.docx_filename,
+                    initialDocxFilename=manuscript.initial_docx_filename,
                     evaluators=evaluator_assignments,
                     coauthors=coauthor_responses,
                     createdAt=manuscript.created_at,
@@ -451,6 +454,7 @@ class ManuscriptService:
                     status=manuscript.status,
                     pdfFilename=manuscript.pdf_filename,
                     docxFilename=manuscript.docx_filename,
+                    initialDocxFilename=manuscript.initial_docx_filename,
                     evaluators=evaluator_assignments,
                     coauthors=coauthor_responses,
                     isAnonymized=manuscript.is_anonymized,
@@ -521,6 +525,7 @@ class ManuscriptService:
             status=manuscript.status,
             pdfFilename=manuscript.pdf_filename,
             docxFilename=manuscript.docx_filename,
+            initialDocxFilename=manuscript.initial_docx_filename,
             author=AuthorInfo(
                 email=author.email,
                 fullName=author.full_name,
@@ -587,6 +592,7 @@ class ManuscriptService:
             status=manuscript.status,
             pdfFilename=manuscript.pdf_filename,
             docxFilename=manuscript.docx_filename,
+            initialDocxFilename=manuscript.initial_docx_filename,
             coauthors=coauthor_responses,
             isAnonymized=manuscript.is_anonymized,
             isInternallyValidated=manuscript.is_internally_validated,
@@ -638,6 +644,8 @@ class ManuscriptService:
             manuscript.pdf_filename = revision_data.pdfFilename
         if revision_data.docxFilename is not None:
             manuscript.docx_filename = revision_data.docxFilename
+        if revision_data.initialDocxFilename is not None:
+            manuscript.initial_docx_filename = revision_data.initialDocxFilename
         
         # Validate and update theme if provided
         if revision_data.themeId is not None:
@@ -767,6 +775,7 @@ class ManuscriptService:
             status=updated_manuscript.status,
             pdfFilename=updated_manuscript.pdf_filename,
             docxFilename=updated_manuscript.docx_filename,
+            initialDocxFilename=updated_manuscript.initial_docx_filename,
             coauthors=coauthor_responses,
             createdAt=updated_manuscript.created_at,
             updatedAt=updated_manuscript.updated_at
@@ -906,6 +915,7 @@ class ManuscriptService:
             status=updated_manuscript.status,
             pdfFilename=updated_manuscript.pdf_filename,
             docxFilename=updated_manuscript.docx_filename,
+            initialDocxFilename=updated_manuscript.initial_docx_filename,
             coauthors=coauthor_responses,
             createdAt=updated_manuscript.created_at,
             updatedAt=updated_manuscript.updated_at
@@ -1020,6 +1030,10 @@ class ManuscriptService:
         if update_data.docxFilename is not None:
             track_change("Fichier DOCX", manuscript.docx_filename, update_data.docxFilename)
             manuscript.docx_filename = update_data.docxFilename
+
+        if update_data.initialDocxFilename is not None:
+            track_change("Fichier DOCX initial", manuscript.initial_docx_filename, update_data.initialDocxFilename)
+            manuscript.initial_docx_filename = update_data.initialDocxFilename
 
         # Si des changements ont été effectués
         if changes:
@@ -1230,7 +1244,6 @@ class ManuscriptService:
                     languageName=manuscript.language.name,
                     status=manuscript.status,
                     pdfFilename=manuscript.pdf_filename,
-                    docxFilename=manuscript.docx_filename,
                     assignmentStatus=assignment.status,
                     assignedAt=assignment.assigned_at,
                     evaluationDeadline=assignment.evaluation_deadline,

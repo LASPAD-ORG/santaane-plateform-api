@@ -50,6 +50,9 @@ class Manuscript(SQLModel, table=True):
 
     # --- DOCX optionnel ---
     docx_filename: Optional[str] = Field(default=None, max_length=255, nullable=True)
+    
+    # --- DOCX initial (soumis par l'auteur dès le départ, visible éditeur uniquement) ---
+    initial_docx_filename: Optional[str] = Field(default=None, max_length=255, nullable=True)
 
     # --- Dates métier ---
     last_revision_at: Optional[datetime] = Field(default=None)

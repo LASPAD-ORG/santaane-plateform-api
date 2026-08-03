@@ -38,9 +38,9 @@ class ManuscriptSubmit(BaseModel):
     sectionId: int = Field(..., gt=0)
     languageId: int = Field(..., gt=0)
     pdfFilename: str = Field(..., description="Name of the uploaded PDF file")
-    docxFilename: Optional[str] = Field(None, description="Optional name of the uploaded DOCX file")
+    docxFilename: Optional[str] = Field(None, description="Optional name of the uploaded DOCX file (final version, after acceptance)")
+    initialDocxFilename: str = Field(..., description="Name of the initial DOCX file, submitted upfront (editor-only visibility)")
     coauthors: Optional[List[CoauthorInput]] = Field(None, description="List of co-authors")
-
 
 class ManuscriptRevision(BaseModel):
     """Schema for manuscript revision (when status is REVISION_REQUESTED)"""
@@ -52,6 +52,7 @@ class ManuscriptRevision(BaseModel):
     languageId: Optional[int] = Field(None, gt=0)
     pdfFilename: Optional[str] = Field(None, description="Name of the uploaded PDF file")
     docxFilename: Optional[str] = Field(None, description="Optional name of the uploaded DOCX file")
+    initialDocxFilename: Optional[str] = Field(None, description="Optional new initial DOCX file")
     coauthors: Optional[List[CoauthorInput]] = Field(None, description="Updated list of co-authors")
 
 
@@ -65,6 +66,7 @@ class ManuscriptUpdate(BaseModel):
     languageId: Optional[int] = Field(None, gt=0)
     pdfFilename: Optional[str] = Field(None, description="Name of the uploaded PDF file")
     docxFilename: Optional[str] = Field(None, description="Optional name of the uploaded DOCX file")
+    initialDocxFilename: Optional[str] = Field(None, description="Optional initial DOCX file")
 
 
 class ManuscriptStatusUpdate(BaseModel):
@@ -119,6 +121,7 @@ class ManuscriptResponse(BaseModel):
     status: ManuscriptStatus
     pdfFilename: str
     docxFilename: Optional[str] = None
+    initialDocxFilename: Optional[str] = None
     evaluators: List[EvaluatorAssignment] = Field(default_factory=list)
     coauthors: List[CoauthorResponse] = Field(default_factory=list)
     # Anonymisation fields
@@ -147,6 +150,7 @@ class ManuscriptDetailResponse(BaseModel):
     status: ManuscriptStatus
     pdfFilename: str
     docxFilename: Optional[str] = None
+    initialDocxFilename: Optional[str] = None
     author: AuthorInfo
     coauthors: List[CoauthorResponse] = Field(default_factory=list)
     # Anonymisation fields
