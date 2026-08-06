@@ -1046,19 +1046,7 @@ class ManuscriptService:
             
             # Envoyer les notifications
             try:
-                # Notification à l'auteur
-                if author.email:
-                    author_success = await EmailService.send_manuscript_updated_author_notification(
-                        to_email=author.email,
-                        author_name=author.full_name,
-                        manuscript_id=updated_manuscript.id,
-                        manuscript_title=updated_manuscript.title,
-                        changes=changes,
-                        lang=manuscript_lang
-                    )
-                    logger.info(f"Notification de mise à jour envoyée à l'auteur: {'succès' if author_success else 'échec'}")
                 
-                # Notification au système
                 system_success = await EmailService.send_manuscript_updated_system_notification(
                     manuscript_id=updated_manuscript.id,
                     manuscript_title=updated_manuscript.title,

@@ -136,14 +136,9 @@ class EvaluatorAssignmentService:
             author = author_result.scalar_one_or_none()
 
             if author:
-                EmailService.send_autor_manuscript_assigner_a_evaluator(
-                    to_email=author.email,
-                    author_name=author.full_name,
-                    manuscript_title=manuscript.title,
-                    manuscript_id=manuscript.id,
-                    lang=manuscript_lang
-                )
-                logger.info(f"Author notification sent for evaluator assignment to manuscript {manuscript_id}")
+                # [Retire sur demande metier] Pas de notification a l'auteur lors de l'assignation d'un evaluateur.
+                # L'auteur voit le statut sur la plateforme.
+                pass
         except Exception as e:
             logger.error(f"Failed to send author notification for evaluator assignment: {str(e)}")
 
@@ -234,15 +229,9 @@ class EvaluatorAssignmentService:
                         )
                         author = author_result.scalar_one_or_none()
                         if author:
-                            EmailService.send_autor_reponse_evalutor_to_assignation(
-                                to_email=author.email,
-                                author_name=author.full_name,
-                                manuscript_title=manuscript.title,
-                                manuscript_id=manuscript.id,
-                                accepted=True,
-                                lang=manuscript_lang
-                            )
-                            logger.info(f"Author notification sent for evaluator acceptance of manuscript {manuscript_id}")
+                            # [Retire sur demande metier] Pas de notification a l'auteur quand l'evaluateur accepte.
+                            # L'auteur voit "en cours d'evaluation" sur la plateforme.
+                            pass
                     except Exception as e:
                         logger.error(f"Failed to send author notification for evaluator acceptance: {str(e)}")
 
@@ -317,15 +306,8 @@ class EvaluatorAssignmentService:
                         )
                         author = author_result.scalar_one_or_none()
                         if author:
-                            EmailService.send_autor_reponse_evalutor_to_assignation(
-                                to_email=author.email,
-                                author_name=author.full_name,
-                                manuscript_title=manuscript.title,
-                                manuscript_id=manuscript.id,
-                                accepted=False,
-                                lang=manuscript_lang
-                            )
-                            logger.info(f"Author notification sent for evaluator decline of manuscript {manuscript_id}")
+                            # [Retire sur demande metier] Pas de notification a l'auteur quand l'evaluateur refuse.
+                            pass
                     except Exception as e:
                         logger.error(f"Failed to send author notification for evaluator decline: {str(e)}")
 
