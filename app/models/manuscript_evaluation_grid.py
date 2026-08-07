@@ -72,11 +72,24 @@ class ManuscriptEvaluationGrid(SQLModel, table=True):
         description="Suggestions pour améliorer le texte (optionnel)"
     )
 
+    # --- Champs spécifiques à la grille de l'évaluateur interne ---
+    editorial_line_fit: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True),
+        description="Adéquation à la ligne éditoriale (grille interne)"
+    )
+
+    global_opinion: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True),
+        description="Avis global sur le manuscrit (grille interne)"
+    )
+
     # Avis final
     recommendation: str = Field(
         max_length=50,
         nullable=False,
-        description="Avis final: accepted_with_validation, resubmission_required, ou rejected"
+        description="Avis final. Externe: accepted_with_validation, resubmission_required, rejected. Interne: internal_accepted_after_revision, internal_to_external, internal_rejected"
     )
 
     # Timestamps

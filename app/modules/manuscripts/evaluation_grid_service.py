@@ -166,6 +166,8 @@ class EvaluationGridService:
             strengths=grid.strengths,
             weaknesses=grid.weaknesses,
             suggestions=grid.suggestions or "",
+            editorialLineFit=grid.editorial_line_fit,
+            globalOpinion=grid.global_opinion,
             recommendation=grid.recommendation,
             createdAt=grid.created_at,
             updatedAt=grid.updated_at,
@@ -206,13 +208,15 @@ class EvaluationGridService:
                 )
 
             # UPDATE existing grid
-            existing_grid.originality_of_ideas = data.originalityOfIdeas
-            existing_grid.methodology_rigor = data.methodologyRigor
-            existing_grid.theoretical_approach = data.theoreticalApproach
-            existing_grid.presentation_clarity = data.presentationClarity
-            existing_grid.strengths = data.strengths
-            existing_grid.weaknesses = data.weaknesses
+            existing_grid.originality_of_ideas = data.originalityOfIdeas or ""
+            existing_grid.methodology_rigor = data.methodologyRigor or ""
+            existing_grid.theoretical_approach = data.theoreticalApproach or ""
+            existing_grid.presentation_clarity = data.presentationClarity or ""
+            existing_grid.strengths = data.strengths or ""
+            existing_grid.weaknesses = data.weaknesses or ""
             existing_grid.suggestions = data.suggestions if data.suggestions else None
+            existing_grid.editorial_line_fit = data.editorialLineFit
+            existing_grid.global_opinion = data.globalOpinion
             existing_grid.recommendation = data.recommendation
             existing_grid.updated_at = datetime.utcnow()
 
@@ -226,13 +230,15 @@ class EvaluationGridService:
             new_grid = ManuscriptEvaluationGrid(
                 manuscript_id=manuscript_id,
                 evaluator_id=evaluator_id,
-                originality_of_ideas=data.originalityOfIdeas,
-                methodology_rigor=data.methodologyRigor,
-                theoretical_approach=data.theoreticalApproach,
-                presentation_clarity=data.presentationClarity,
-                strengths=data.strengths,
-                weaknesses=data.weaknesses,
+                originality_of_ideas=data.originalityOfIdeas or "",
+                methodology_rigor=data.methodologyRigor or "",
+                theoretical_approach=data.theoreticalApproach or "",
+                presentation_clarity=data.presentationClarity or "",
+                strengths=data.strengths or "",
+                weaknesses=data.weaknesses or "",
                 suggestions=data.suggestions if data.suggestions else None,
+                editorial_line_fit=data.editorialLineFit,
+                global_opinion=data.globalOpinion,
                 recommendation=data.recommendation,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
@@ -261,6 +267,8 @@ class EvaluationGridService:
             strengths=grid_to_return.strengths,
             weaknesses=grid_to_return.weaknesses,
             suggestions=grid_to_return.suggestions or "",
+            editorialLineFit=grid_to_return.editorial_line_fit,
+            globalOpinion=grid_to_return.global_opinion,
             recommendation=grid_to_return.recommendation,
             createdAt=grid_to_return.created_at,
             updatedAt=grid_to_return.updated_at,
@@ -298,16 +306,27 @@ class EvaluationGridService:
                 detail="Grille d'évaluation non trouvée. Veuillez d'abord remplir la grille."
             )
 
-        # Validate all required fields are filled
-        if not all([
-            grid.originality_of_ideas,
-            grid.methodology_rigor,
-            grid.theoretical_approach,
-            grid.presentation_clarity,
-            grid.strengths,
-            grid.weaknesses,
-            grid.recommendation
-        ]):
+        # Validate all required fields are filled (selon le type de grille)
+        is_internal = (grid.recommendation or "").startswith("internal_")
+        if is_internal:
+            required_fields = [
+                grid.editorial_line_fit,
+                grid.originality_of_ideas,
+                grid.theoretical_approach,
+                grid.global_opinion,
+                grid.recommendation,
+            ]
+        else:
+            required_fields = [
+                grid.originality_of_ideas,
+                grid.methodology_rigor,
+                grid.theoretical_approach,
+                grid.presentation_clarity,
+                grid.strengths,
+                grid.weaknesses,
+                grid.recommendation,
+            ]
+        if not all(required_fields):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="La grille d'évaluation doit être complétée avant soumission"
@@ -416,6 +435,8 @@ class EvaluationGridService:
             "strengths": grid.strengths,
             "weaknesses": grid.weaknesses,
             "suggestions": grid.suggestions or "",
+            "editorialLineFit": grid.editorial_line_fit,
+            "globalOpinion": grid.global_opinion,
             "recommendation": grid.recommendation,
             "submittedAt": grid.submitted_at
         }
