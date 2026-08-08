@@ -530,7 +530,8 @@ class EvaluatorAssignmentService:
             evaluator_name=evaluator.full_name,
             manuscript_title=manuscript.title,
             evaluation_deadline=deadline_str,
-            lang=language_code
+            lang=language_code,
+            deadline_date=assignment.evaluation_deadline
         )
 
         try:

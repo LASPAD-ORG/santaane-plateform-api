@@ -430,19 +430,16 @@ class EmailService:
         lang: str = "fr"
      ) -> bool:
         is_fr = cls._is_french(lang)
-        
+
         if is_fr:
-            subject = f"Demande d'évaluation - {manuscript_title[:50]}..."
+            subject = f"Invitation à évaluer un manuscrit pour {cls.JOURNAL_NAME} – {manuscript_title[:50]}..."
             content = f"""
             <div style="color: #333;">
                 <p style="font-size: 18px; margin-bottom: 25px;">
                     Cher(e) <strong>{{evaluator_name}}</strong>,
                 </p>
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    Nous espérons que vous allez bien.
-                </p>
-                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    Nous croyons que vous seriez un(e) excellent(e) rapporteur(rice) pour le manuscrit intitulé :
+                    Nous nous permettons de vous écrire en vue de l'évaluation d'un article pour {cls.JOURNAL_NAME}. Depuis 2022, les articles du journal font l'objet d'une relecture par les pairs. Dans cette perspective, compte tenu de votre expertise, nous souhaiterions vous confier la relecture d'un article consacré à :
                 </p>
                 <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
                     <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
@@ -451,7 +448,10 @@ class EmailService:
                     </p>
                 </div>
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    Les détails du manuscrit ainsi que la grille d'évaluation sont disponibles dans votre espace personnel sur la plateforme.
+                    Nous pensons que votre avis scientifique sur le potentiel de publication de ce manuscrit, ainsi que sur les améliorations susceptibles de renforcer sa qualité, serait particulièrement précieux pour notre comité de rédaction.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    La plateforme met également à votre disposition le formulaire d'évaluation ainsi que la Charte des relecteurs de Global Africa.
                 </p>
                 <div style="text-align: center; margin: 35px 0;">
                     <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
@@ -465,7 +465,10 @@ class EmailService:
                     </p>
                 </div>
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    Dans l'attente de votre retour, veuillez agréer l'expression de notre considération distinguée.
+                    Si vous n'êtes pas en mesure de réaliser cette évaluation, nous vous serions reconnaissants de bien vouloir, dans la mesure du possible, nous recommander un ou plusieurs collègues disposant de l'expertise appropriée. Dans ce cas, merci de répondre à ce courriel en mettant en copie <strong>redaction@globalafricasciences.org</strong>.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous vous remercions très sincèrement pour le temps que vous voudrez bien consacrer à cette sollicitation. Dans l'attente de votre retour, veuillez agréer l'expression de notre considération distinguée.
                 </p>
                 <p style="font-size: 15px; margin-top: 25px;">
                     Cordialement,<br>
@@ -477,19 +480,16 @@ class EmailService:
                 manuscript_title=manuscript_title,
                 evaluation_deadline=evaluation_deadline
             )
-            body = cls._get_base_template("Demande d'évaluation", content)
+            body = cls._get_base_template("Invitation à évaluer un manuscrit", content)
         else:
-            subject = f"Evaluation Request - {manuscript_title[:50]}..."
+            subject = f"Invitation to review a manuscript for {cls.JOURNAL_NAME} – {manuscript_title[:50]}..."
             content = f"""
             <div style="color: #333;">
                 <p style="font-size: 18px; margin-bottom: 25px;">
                     Dear <strong>{{evaluator_name}}</strong>,
                 </p>
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    We hope this message finds you well.
-                </p>
-                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    We believe you would be an excellent reviewer for the manuscript entitled:
+                    We are writing to invite you to review a manuscript for {cls.JOURNAL_NAME}. Since 2022, all manuscripts submitted to the journal have undergone a peer-review process. In light of your expertise, we would be grateful if you would consider reviewing a manuscript entitled:
                 </p>
                 <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
                     <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
@@ -498,7 +498,10 @@ class EmailService:
                     </p>
                 </div>
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    The manuscript details and evaluation form are available in your personal space on the platform.
+                    We believe your scientific assessment of this manuscript's potential for publication, as well as of the improvements that could strengthen its quality, would be particularly valuable to our editorial committee.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    The platform also provides the reviewer evaluation form and the Global Africa Reviewers' Charter for your reference.
                 </p>
                 <div style="text-align: center; margin: 35px 0;">
                     <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
@@ -512,7 +515,10 @@ class EmailService:
                     </p>
                 </div>
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    We look forward to your response and thank you for considering this request.
+                    If you are unable to undertake this review, we would be grateful if you could, where possible, recommend one or more colleagues with relevant expertise. In that case, please reply to this email and copy <strong>redaction@globalafricasciences.org</strong>.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We sincerely appreciate your time and consideration of this request. We look forward to hearing from you and thank you in advance for your valuable contribution.
                 </p>
                 <p style="font-size: 15px; margin-top: 25px;">
                     Best regards,<br>
@@ -524,10 +530,16 @@ class EmailService:
                 manuscript_title=manuscript_title,
                 evaluation_deadline=evaluation_deadline
             )
-            body = cls._get_base_template("Evaluation Request", content)
-        
-        return cls.send_email(to_email, subject, body)
+            body = cls._get_base_template("Invitation to review a manuscript", content)
 
+        return cls.send_email(
+            to_email,
+            subject,
+            body,
+            cc=["redaction@globalafricasciences.org"]
+        )
+
+    @classmethod
     @classmethod
     def send_evaluation_reminder_email(
         cls,
@@ -535,12 +547,65 @@ class EmailService:
         evaluator_name: str,
         manuscript_title: str,
         evaluation_deadline: str,
-        lang: str = "fr"
+        lang: str = "fr",
+        deadline_date=None
      ) -> bool:
         is_fr = cls._is_french(lang)
-        
+
+        # Déterminer la variante : avant échéance (rappel amical) ou après (rapport en retard)
+        from datetime import date, datetime
+        is_overdue = False
+        if deadline_date is not None:
+            dd = deadline_date.date() if isinstance(deadline_date, datetime) else deadline_date
+            try:
+                is_overdue = date.today() > dd
+            except Exception:
+                is_overdue = False
+
         if is_fr:
-            subject = f"Rappel - Évaluation en attente - {manuscript_title[:50]}..."
+            if is_overdue:
+                subject = f"Rappel - Rapport d'évaluation attendu - {manuscript_title[:50]}..."
+                header = "Rappel : rapport d'évaluation attendu"
+                body_paragraphs = f"""
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Vous avez récemment accepté d'évaluer le manuscrit intitulé :
+                </p>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous nous permettons de vous adresser ce message afin de vous rappeler que votre rapport d'évaluation est désormais attendu.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Les auteurs sont naturellement dans l'attente d'une décision concernant leur manuscrit. Nous vous serions reconnaissants de bien vouloir nous transmettre votre rapport dans les meilleurs délais.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    N'hésitez pas à nous contacter si vous rencontrez une difficulté ou si nous pouvons vous apporter une quelconque assistance. Nous vous remercions sincèrement pour le temps et l'expertise que vous consacrez à cette évaluation et vous prions d'agréer l'expression de nos salutations distinguées.
+                </p>
+                """
+            else:
+                subject = f"Rappel - Évaluation en cours - {manuscript_title[:50]}..."
+                header = "Rappel : évaluation en cours"
+                body_paragraphs = f"""
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Vous avez récemment accepté d'évaluer le manuscrit intitulé :
+                </p>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous nous permettons de vous adresser ce message à titre de rappel concernant cette évaluation. La date limite de remise de votre rapport approche, et nous souhaitions nous assurer que vous disposez de toutes les informations nécessaires pour mener à bien cette mission.
+                </p>
+                <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #ff8f00;">
+                        <strong>Délai d'évaluation :</strong><br>
+                        La date limite est fixée au <strong>{{evaluation_deadline}}</strong>.
+                    </p>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous restons également à votre disposition pour toute question ou tout besoin d'assistance. Nous vous remercions sincèrement pour le temps et l'expertise que vous consacrez à cette évaluation et vous prions d'agréer l'expression de nos salutations distinguées.
+                </p>
+                """
             content = f"""
             <div style="color: #333;">
                 <p style="font-size: 18px; margin-bottom: 25px;">
@@ -548,32 +613,18 @@ class EmailService:
                 </p>
                 <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left: 4px solid #ffa000; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
                     <p style="margin: 0; font-size: 16px; color: #e65100;">
-                        <strong>Rappel : Évaluation en attente</strong>
+                        <strong>{header}</strong>
                     </p>
                 </div>
-                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    Nous n'avons pas encore reçu votre évaluation pour le manuscrit intitulé :
-                </p>
-                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
-                </div>
-                <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
-                    <p style="margin: 0; font-size: 14px; color: #ff8f00;">
-                        <strong>Délai d'évaluation :</strong><br>
-                        Nous vous rappelons que la date limite est fixée au <strong>{{evaluation_deadline}}</strong>.
-                    </p>
-                </div>
-                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    Si vous avez déjà soumis votre évaluation, nous vous remercions et veuillez ignorer ce message.
-                </p>
+                {body_paragraphs}
                 <div style="text-align: center; margin: 35px 0;">
                     <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
                         Accéder au manuscrit
                     </a>
                 </div>
                 <p style="font-size: 15px; margin-top: 25px;">
-                    Cordialement,<br>
-                    <strong style="color: {cls.PRIMARY_COLOR};">L'équipe éditoriale de {cls.JOURNAL_NAME}</strong>
+                    L'équipe éditoriale<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">{cls.JOURNAL_NAME}</strong>
                 </p>
             </div>
             """.format(
@@ -583,7 +634,49 @@ class EmailService:
             )
             body = cls._get_base_template("Rappel d'évaluation", content)
         else:
-            subject = f"Reminder - Pending Evaluation - {manuscript_title[:50]}..."
+            if is_overdue:
+                subject = f"Reminder - Review Report Overdue - {manuscript_title[:50]}..."
+                header = "Reminder: Review Report Overdue"
+                body_paragraphs = f"""
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We hope this message finds you well. You recently agreed to review the manuscript entitled:
+                </p>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We are writing to kindly remind you that your review report is now overdue.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    The authors are naturally awaiting a decision regarding their manuscript, and we would be most grateful if you could submit your review at your earliest convenience.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Please do not hesitate to contact us if you are experiencing any difficulties or if there is any way we can assist you. We sincerely appreciate the time and expertise you are dedicating to this review and thank you in advance for your valuable contribution.
+                </p>
+                """
+            else:
+                subject = f"Reminder - Review in Progress - {manuscript_title[:50]}..."
+                header = "Reminder: Review in Progress"
+                body_paragraphs = f"""
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    You recently agreed to review the manuscript entitled:
+                </p>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We are writing to send you a friendly reminder regarding this review. As the deadline for submitting your review is approaching, we wanted to ensure that you have all the information you need to complete your assessment.
+                </p>
+                <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #ff8f00;">
+                        <strong>Evaluation Deadline:</strong><br>
+                        The deadline is <strong>{{evaluation_deadline}}</strong>.
+                    </p>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Should you have any questions or require any assistance, please do not hesitate to contact us. We sincerely appreciate the time and expertise you are dedicating to this review and thank you for your valuable contribution to the quality of {cls.JOURNAL_NAME}.
+                </p>
+                """
             content = f"""
             <div style="color: #333;">
                 <p style="font-size: 18px; margin-bottom: 25px;">
@@ -591,32 +684,18 @@ class EmailService:
                 </p>
                 <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left: 4px solid #ffa000; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
                     <p style="margin: 0; font-size: 16px; color: #e65100;">
-                        <strong>Reminder: Pending Evaluation</strong>
+                        <strong>{header}</strong>
                     </p>
                 </div>
-                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    We have not yet received your evaluation for the manuscript entitled:
-                </p>
-                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{{manuscript_title}}\u201D</h3>
-                </div>
-                <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
-                    <p style="margin: 0; font-size: 14px; color: #ff8f00;">
-                        <strong>Evaluation Deadline:</strong><br>
-                        We remind you that the deadline is <strong>{{evaluation_deadline}}</strong>.
-                    </p>
-                </div>
-                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-                    If you have already submitted your evaluation, please accept our thanks and disregard this reminder.
-                </p>
+                {body_paragraphs}
                 <div style="text-align: center; margin: 35px 0;">
                     <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
                         Access Manuscript
                     </a>
                 </div>
                 <p style="font-size: 15px; margin-top: 25px;">
-                    Best regards,<br>
-                    <strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of {cls.JOURNAL_NAME}</strong>
+                    The Editorial Team<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">{cls.JOURNAL_NAME}</strong>
                 </p>
             </div>
             """.format(
@@ -625,8 +704,13 @@ class EmailService:
                 evaluation_deadline=evaluation_deadline
             )
             body = cls._get_base_template("Evaluation Reminder", content)
-        
-        return cls.send_email(to_email, subject, body)
+
+        return cls.send_email(
+            to_email,
+            subject,
+            body,
+            cc=["redaction@globalafricasciences.org"]
+        )
 
     # ==========================================
     # EMAILS CHANGEMENT DE STATUT UTILISATEUR
@@ -826,6 +910,7 @@ class EmailService:
             <div style="color: #333;">
                 <p style="font-size: 18px; margin-bottom: 25px;">Cher(e) <strong>{author_name}</strong>,</p>
                 <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">L'équipe de {cls.JOURNAL_NAME} vous remercie pour l'intérêt que vous portez à notre journal et pour votre contribution.</p>
                     <p style="margin: 0; font-size: 16px; color: #2e7d32;"><strong>Votre manuscrit a bien été soumis !</strong></p>
                 </div>
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">Nous avons bien reçu votre manuscrit intitulé :</p>
@@ -865,6 +950,7 @@ class EmailService:
             <div style="color: #333;">
                 <p style="font-size: 18px; margin-bottom: 25px;">Dear <strong>{author_name}</strong>,</p>
                 <div style="background: linear-gradient(135deg, #e8f5f3 0%, #d4ebe7 100%); border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">The {cls.JOURNAL_NAME} Editorial Team sincerely thanks you for your interest in our journal and for your valuable contribution.</p>
                     <p style="margin: 0; font-size: 16px; color: #2e7d32;"><strong>Your manuscript has been successfully submitted!</strong></p>
                 </div>
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">We have received your manuscript titled:</p>
@@ -1298,8 +1384,8 @@ class EmailService:
                 </div>
                 <h4 style="color: {cls.PRIMARY_COLOR}; margin-top: 25px; margin-bottom: 15px;">Prochaines étapes :</h4>
                 <ul style="font-size: 14px; line-height: 1.8; color: #555; padding-left: 20px;">
-                    <li>Examen des modifications par l'équipe éditoriale</li>
-                    <li>Nouvelle évaluation si nécessaire</li>
+                    <li>Examen du manuscrit révisé par l'équipe éditoriale</li>
+                    <li>Nouvelle évaluation par les pairs, si nécessaire</li>
                     <li>Décision éditoriale finale</li>
                 </ul>
                 <div style="text-align: center; margin: 35px 0;">
@@ -1327,6 +1413,12 @@ class EmailService:
                         Reference: #{manuscript_id} | Version: Revision #{revision_number}
                     </p>
                 </div>
+                <h4 style="color: {cls.PRIMARY_COLOR}; margin-top: 25px; margin-bottom: 15px;">Next Steps:</h4>
+                <ul style="font-size: 14px; line-height: 1.8; color: #555; padding-left: 20px;">
+                    <li>Review of the revised manuscript by the Editorial Team</li>
+                    <li>Further peer review, if necessary</li>
+                    <li>Final editorial decision</li>
+                </ul>
                 <div style="text-align: center; margin: 35px 0;">
                     <a href="{cls.PLATFORM_URL}/dashboard/author/manuscripts/{manuscript_id}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
                         Track My Manuscript
