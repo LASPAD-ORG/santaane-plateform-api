@@ -12,7 +12,7 @@ from app.db import get_db
 from app.core.permissions import require_any_role, get_current_user
 from app.core.roles import UserRole
 from app.models.user import User
-from app.modules.manuscripts.proposal_schemas import ProposalCreate, ProposalResponse
+from app.modules.manuscripts.proposal_schemas import ProposalCreate, ProposalResponse, AssignProposalRequest, ProposalEnrichedResponse
 from app.modules.manuscripts.proposal_service import ProposalService
 
 
@@ -43,7 +43,7 @@ async def create_proposal(
 
 @router.get(
     "/{manuscript_id}/proposed-evaluators",
-    response_model=List[ProposalResponse],
+    response_model=List[ProposalEnrichedResponse],
     dependencies=[Depends(require_any_role(
         UserRole.EDITOR, UserRole.SUPER_ADMIN, UserRole.INTERNAL_EVALUATOR
     ))],
@@ -80,3 +80,27 @@ async def delete_proposal(
     """
     service = ProposalService(db)
     return await service.delete_proposal(manuscript_id, proposal_id, current_user.id)
+
+
+@router.post(
+    "/{manuscript_id}/proposed-evaluators/{proposal_id}/assign",
+    dependencies=[Depends(require_any_role(UserRole.EDITOR, UserRole.SUPER_ADMIN))],
+    summary="Assign a proposed external evaluator (creates account if needed)",
+)
+async def assign_proposed_evaluator(
+    manuscript_id: int,
+    proposal_id: int,
+    data: AssignProposalRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Affecte un evaluateur externe propose au manuscrit.
+    Cree le compte si necessaire (roles AUTHOR + EVALUATOR), ajoute le role
+    EVALUATOR si le compte existe sans ce role, puis envoie l'invitation.
+    **Requires:** EDITOR ou SUPER_ADMIN
+    """
+    service = ProposalService(db)
+    return await service.assign_proposed_evaluator(
+        manuscript_id, proposal_id, current_user.id, data.evaluation_deadline
+    )

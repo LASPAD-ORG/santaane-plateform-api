@@ -540,6 +540,156 @@ class EmailService:
         )
 
     @classmethod
+    def send_external_evaluator_invitation(
+        cls,
+        to_email: str,
+        evaluator_name: str,
+        manuscript_title: str,
+        evaluation_deadline: str,
+        login_email: str,
+        password: str = None,
+        roles: str = None,
+        lang: str = "fr"
+    ) -> bool:
+        is_fr = cls._is_french(lang)
+        has_credentials = password is not None
+
+        if is_fr:
+            subject = f"Invitation à évaluer un manuscrit pour {cls.JOURNAL_NAME} – {manuscript_title[:50]}..."
+            credentials_block = ""
+            if has_credentials:
+                credentials_block = f"""
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Dans le cadre de notre processus éditorial, nous vous avons créé un compte sur notre plateforme de gestion des manuscrits. Vous trouverez ci-dessous vos identifiants de connexion :
+                </p>
+                <div style="background: #e8f5f3; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: {cls.PRIMARY_COLOR_DARK}; line-height: 1.8;">
+                        <strong>Vos identifiants de connexion</strong><br>
+                        Email : <strong>{login_email}</strong><br>
+                        Mot de passe : <strong>{password}</strong><br>
+                        Rôle(s) : <strong>{roles or "Évaluateur externe"}</strong>
+                    </p>
+                </div>
+                <p style="font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: #856404;">
+                    Pour des raisons de sécurité, nous vous recommandons de modifier votre mot de passe dès votre première connexion.
+                </p>
+                """
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Cher(e) <strong>{evaluator_name}</strong>,
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous espérons que vous allez bien.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous nous permettons de vous écrire en vue de l'évaluation d'un article pour {cls.JOURNAL_NAME}. Depuis 2022, les articles de la revue font l'objet d'une relecture par les pairs. Dans cette perspective, compte tenu de votre expertise, nous souhaiterions vous confier la relecture d'un article consacré à :
+                </p>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{manuscript_title}\u201D</h3>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous pensons que votre avis scientifique sur le potentiel de publication de ce manuscrit, ainsi que sur les améliorations susceptibles de renforcer sa qualité, serait particulièrement précieux pour notre comité de rédaction.
+                </p>
+                {credentials_block}
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Se connecter
+                    </a>
+                </div>
+                <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #ff8f00;">
+                        Nous vous serions reconnaissants de bien vouloir nous faire connaître votre décision d'accepter ou de décliner cette demande dans un délai de <strong>7 jours</strong>. En cas d'acceptation, nous vous remercions de bien vouloir déposer votre rapport d'évaluation sur la plateforme au plus tard le <strong>{evaluation_deadline}</strong>.
+                    </p>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Vous trouverez également sur la plateforme la grille d'évaluation ainsi que la charte des évaluateurs de {cls.JOURNAL_NAME}.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Dans l'hypothèse où vous ne seriez pas en mesure d'assurer cette évaluation, nous vous serions reconnaissants de bien vouloir nous indiquer, si possible, le nom d'une ou plusieurs personnes susceptibles de posséder l'expertise requise, par retour de mail en mettant en copie <strong>redaction@globalafricasciences.org</strong>.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous vous remercions très sincèrement pour le temps que vous voudrez bien consacrer à cette sollicitation. Dans l'attente de votre retour, veuillez agréer l'expression de notre considération distinguée.
+                </p>
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Cordialement,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">L'équipe éditoriale de {cls.JOURNAL_NAME}</strong>
+                </p>
+            </div>
+            """
+            body = cls._get_base_template("Invitation à évaluer un manuscrit", content)
+        else:
+            subject = f"Invitation to review a manuscript for {cls.JOURNAL_NAME} – {manuscript_title[:50]}..."
+            credentials_block = ""
+            if has_credentials:
+                credentials_block = f"""
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    As part of our editorial process, we have created an account for you on our manuscript management platform. Below are your login credentials:
+                </p>
+                <div style="background: #e8f5f3; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: {cls.PRIMARY_COLOR_DARK}; line-height: 1.8;">
+                        <strong>Your login credentials</strong><br>
+                        Email: <strong>{login_email}</strong><br>
+                        Password: <strong>{password}</strong><br>
+                        Role(s): <strong>{roles or "External reviewer"}</strong>
+                    </p>
+                </div>
+                <p style="font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: #856404;">
+                    For security reasons, we recommend that you change your password upon your first login.
+                </p>
+                """
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Dear <strong>{evaluator_name}</strong>,
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We hope this message finds you well.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We are writing to invite you to review a manuscript for {cls.JOURNAL_NAME}. Since 2022, all manuscripts submitted to the journal have undergone peer review. In light of your expertise, we would be grateful if you would consider reviewing a manuscript entitled:
+                </p>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin: 0; color: {cls.PRIMARY_COLOR};">\u201C{manuscript_title}\u201D</h3>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We believe your scientific assessment of this manuscript's potential for publication, as well as of the improvements that could strengthen its quality, would be particularly valuable to our editorial committee.
+                </p>
+                {credentials_block}
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Log In
+                    </a>
+                </div>
+                <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #ff8f00;">
+                        We would be grateful if you could let us know whether you accept or decline this request within <strong>7 days</strong>. If you accept, we kindly ask you to submit your review report on the platform by <strong>{evaluation_deadline}</strong> at the latest.
+                    </p>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    You will also find the evaluation form and the {cls.JOURNAL_NAME} reviewers' charter on the platform.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Should you be unable to undertake this review, we would be grateful if you could suggest, where possible, the name of one or more colleagues with the relevant expertise, by replying to this email and copying <strong>redaction@globalafricasciences.org</strong>.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We sincerely thank you for the time you are willing to devote to this request. We look forward to your response and remain at your disposal.
+                </p>
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Best regards,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of {cls.JOURNAL_NAME}</strong>
+                </p>
+            </div>
+            """
+            body = cls._get_base_template("Invitation to review a manuscript", content)
+
+        return cls.send_email(
+            to_email,
+            subject,
+            body,
+            cc=["redaction@globalafricasciences.org"]
+        )
+        
     @classmethod
     def send_evaluation_reminder_email(
         cls,
