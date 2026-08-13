@@ -131,46 +131,20 @@ class UserService:
         current_user: User
      ) -> UserWithRolesResponse:
         """
-        Create a new evaluator account.
-        Only EDITOR and SUPER_ADMIN can create evaluators.
-        Generates a random password and sends it via email.
+        Enrole un evaluateur (interne ou externe).
+        - Si aucun compte : cree le compte (role evaluateur + AUTHOR), mot de passe aleatoire, email avec identifiants.
+        - Si compte existant sans le role : ajoute le role, email d'invitation sans identifiants.
+        - Si compte existant avec le role : ne fait rien (message 'deja evaluateur').
+        Seuls EDITOR et SUPER_ADMIN peuvent enroler.
         """
         import secrets
         import string
         from app.core.email import EmailService
-        
-        # Check if user with email already exists
-        existing = await self.repository.get_by_email(data.email)
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"User with email '{data.email}' already exists"
-            )
-
-        # Generate random password (12 characters: letters, digits, and special chars)
-        alphabet = string.ascii_letters + string.digits + "!@#$%&*"
-        password = ''.join(secrets.choice(alphabet) for _ in range(12))
-        
-        # Hash password
-        password_hash = hash_password(password)
-
-        # Create user with additional fields
         from app.models.user import User as UserModel
-        user_data = UserModel(
-            email=data.email,
-            email_verified=False,
-            password_hash=password_hash,
-            full_name=data.full_name,
-            orcid_id=data.orcid_id,
-            bio=data.bio,
-            position=data.position,
-            institution=data.institution,
-            is_active=True
-        )
-        
-        user = await self.repository.create_user_model(user_data)
-        
-        # Résoudre le rôle selon le type demandé ('internal' ou 'external')
+
+        AUTHOR_ROLE_NAME = "AUTHOR"
+
+        # Resoudre le role selon le type ('internal' ou 'external')
         evaluator_type = (data.evaluator_type or "external").lower()
         if evaluator_type not in ("internal", "external"):
             raise HTTPException(
@@ -184,32 +158,94 @@ class UserService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Role '{role_name}' introuvable en base. Seed-le d'abord."
             )
-        await self.repository.assign_role(user.id, role.id, current_user.id)
 
-        # Send welcome email with credentials
+        existing = await self.repository.get_by_email(data.email)
+
+        if existing is not None:
+            # Compte existant : verifier s'il a deja le role demande
+            user_with_roles = await self.repository.get_with_roles(existing.id)
+            existing_role_ids = []
+            if user_with_roles and getattr(user_with_roles, "user_roles", None):
+                existing_role_ids = [ur.role_id for ur in user_with_roles.user_roles]
+
+            if role.id in existing_role_ids:
+                # CAS C : deja le role → ne rien faire
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cet utilisateur possede deja le role {role_name} (deja evaluateur)."
+                )
+
+            # CAS B : compte existant sans le role → ajouter le role
+            await self.repository.assign_role(existing.id, role.id, current_user.id)
+
+            # Email d'invitation SANS identifiants (le compte existe deja)
+            try:
+                EmailService.send_external_evaluator_invitation(
+                    to_email=existing.email,
+                    evaluator_name=existing.full_name,
+                    manuscript_title="",
+                    evaluation_deadline="",
+                    login_email=existing.email,
+                    password=None,
+                    roles=None,
+                    lang="fr",
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send enrollment invitation to {existing.email}: {str(e)}")
+
+            refreshed = await self.repository.get_with_roles(existing.id)
+            roles = []
+            if hasattr(refreshed, 'user_roles') and refreshed.user_roles:
+                for ur in refreshed.user_roles:
+                    if hasattr(ur, 'role') and ur.role:
+                        roles.append(RoleInfo.model_validate(ur.role))
+            user_dict = UserResponse.model_validate(refreshed).model_dump()
+            user_dict['roles'] = roles
+            return UserWithRolesResponse(**user_dict)
+
+        # CAS A : aucun compte → creer le compte + role evaluateur + AUTHOR
+        alphabet = string.ascii_letters + string.digits + "!@#$%&*"
+        password = ''.join(secrets.choice(alphabet) for _ in range(12))
+        password_hash = hash_password(password)
+
+        user_data = UserModel(
+            email=data.email,
+            email_verified=False,
+            password_hash=password_hash,
+            full_name=data.full_name,
+            orcid_id=data.orcid_id,
+            bio=data.bio,
+            position=data.position,
+            institution=data.institution,
+            is_active=True
+        )
+        user = await self.repository.create_user_model(user_data)
+
+        # Role evaluateur
+        await self.repository.assign_role(user.id, role.id, current_user.id)
+        # Role AUTHOR (en plus)
+        author_role = await self.repository.get_role_by_name(AUTHOR_ROLE_NAME)
+        if author_role is not None:
+            await self.repository.assign_role(user.id, author_role.id, current_user.id)
+
+        # Email de bienvenue avec identifiants
         email_sent = EmailService.send_welcome_email(
             to_email=data.email,
             full_name=data.full_name,
             password=password,
             role=role_name
         )
-        
         if not email_sent:
             logger.warning(f"Failed to send welcome email to {data.email}")
-        
-        # Get user with roles
+
         user_with_roles = await self.repository.get_with_roles(user.id)
-        
-        # Convert to response
         roles = []
         if hasattr(user_with_roles, 'user_roles') and user_with_roles.user_roles:
             for ur in user_with_roles.user_roles:
                 if hasattr(ur, 'role') and ur.role:
                     roles.append(RoleInfo.model_validate(ur.role))
-        
         user_dict = UserResponse.model_validate(user_with_roles).model_dump()
         user_dict['roles'] = roles
-        
         return UserWithRolesResponse(**user_dict)
 
     async def get_user(self, user_id: int, current_user: User) -> UserWithRolesResponse:
