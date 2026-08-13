@@ -164,12 +164,13 @@ async def list_evaluators(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Items per page"),
     type: str = Query("external", pattern="^(internal|external)$", description="Type d'évaluateur"),
+    search: str = Query(None, description="Recherche par nom ou email"),
     service: UserService = Depends(get_user_service)
 ):
     ...
     skip = (page - 1) * size
     role_name = "INTERNAL_EVALUATOR" if type == "internal" else "EVALUATOR"
-    return await service.list_evaluators(skip=skip, limit=size, role_name=role_name)
+    return await service.list_evaluators(skip=skip, limit=size, role_name=role_name, search=search)
 
 
 @router.delete(
@@ -388,7 +389,7 @@ async def change_password(
     "/{user_id}/activate",
     response_model=UserResponse,
     summary="Activate or deactivate a user",
-    dependencies=[Depends(require_super_admin)]
+    dependencies=[Depends(require_any_role(UserRole.EDITOR, UserRole.SUPER_ADMIN))]
 )
 async def activate_user(
     user_id: int,
@@ -411,7 +412,7 @@ async def activate_user(
 @router.delete(
     "/{user_id}",
     summary="Delete a user",
-    dependencies=[Depends(require_super_admin)]
+    dependencies=[Depends(require_any_role(UserRole.EDITOR, UserRole.SUPER_ADMIN))]
 )
 async def delete_user(
     user_id: int,

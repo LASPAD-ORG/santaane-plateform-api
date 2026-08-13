@@ -180,14 +180,12 @@ class UserService:
 
             # Email d'invitation SANS identifiants (le compte existe deja)
             try:
-                EmailService.send_external_evaluator_invitation(
+                EmailService.send_evaluator_enrollment_email(
                     to_email=existing.email,
-                    evaluator_name=existing.full_name,
-                    manuscript_title="",
-                    evaluation_deadline="",
+                    full_name=existing.full_name,
+                    evaluator_type=evaluator_type,
                     login_email=existing.email,
                     password=None,
-                    roles=None,
                     lang="fr",
                 )
             except Exception as e:
@@ -229,11 +227,13 @@ class UserService:
             await self.repository.assign_role(user.id, author_role.id, current_user.id)
 
         # Email de bienvenue avec identifiants
-        email_sent = EmailService.send_welcome_email(
+        email_sent = EmailService.send_evaluator_enrollment_email(
             to_email=data.email,
             full_name=data.full_name,
+            evaluator_type=evaluator_type,
+            login_email=data.email,
             password=password,
-            role=role_name
+            lang="fr",
         )
         if not email_sent:
             logger.warning(f"Failed to send welcome email to {data.email}")
@@ -278,12 +278,14 @@ class UserService:
         skip: int = 0,
         limit: int = 100,
         role_name: str = "EVALUATOR",
+        search: str = None,
      ) -> PaginatedResponse[UserWithRolesResponse]:
         """List all evaluators with pagination."""
         evaluators, total = await self.repository.get_all_evaluators(
             skip=skip,
             limit=limit,
             role_name=role_name,
+            search=search,
         )
 
         # Convert evaluators with roles

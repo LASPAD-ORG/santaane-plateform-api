@@ -119,6 +119,7 @@ class UserRepository:
         skip: int = 0,
         limit: int = 100,
         role_name: str = "EVALUATOR",
+        search: str = None,
     ) -> Tuple[List[User], int]:
         """
         Get all users having the given evaluator role
@@ -145,11 +146,18 @@ class UserRepository:
             )
         )
 
+        if search:
+            like = f"%{search}%"
+            search_cond = or_(User.full_name.ilike(like), User.email.ilike(like))
+            query = query.where(search_cond)
+
         count_query = (
             select(func.count())
             .select_from(User)
             .where(User.id.in_(evaluator_subquery))
         )
+        if search:
+            count_query = count_query.where(search_cond)
 
         total_result = await self.db.execute(count_query)
         total = total_result.scalar()

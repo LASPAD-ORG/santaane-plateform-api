@@ -415,6 +415,122 @@ class EmailService:
         body = cls._get_base_template(f"Bienvenue sur {cls.JOURNAL_NAME}", content)
         return cls.send_email(to_email, subject, body)
 
+    @classmethod
+    def send_evaluator_enrollment_email(
+        cls,
+        to_email: str,
+        full_name: str,
+        evaluator_type: str,
+        login_email: str,
+        password: str = None,
+        lang: str = "fr",
+    ) -> bool:
+        """Notifie une personne qu'elle est enrolee comme evaluateur (interne/externe)."""
+        is_fr = cls._is_french(lang)
+        has_credentials = password is not None
+        is_internal = (evaluator_type or "external").lower() == "internal"
+
+        if is_fr:
+            role_label = "evaluateur interne" if is_internal else "evaluateur externe"
+            role_label_cap = "Evaluateur interne" if is_internal else "Evaluateur externe"
+            subject = f"Vous etes enrole comme {role_label} - {cls.JOURNAL_NAME}"
+            credentials_block = ""
+            if has_credentials:
+                credentials_block = f"""
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Un compte a ete cree pour vous sur notre plateforme de gestion des manuscrits. Voici vos identifiants de connexion :
+                </p>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Email :</strong><br>
+                        <span style="color: {cls.PRIMARY_COLOR}; font-family: monospace; font-size: 16px;">{login_email}</span></p>
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Mot de passe :</strong><br>
+                        <span style="color: {cls.PRIMARY_COLOR}; font-family: monospace; font-size: 16px;">{password}</span></p>
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Role :</strong><br>
+                        <span style="color: {cls.PRIMARY_COLOR}; font-family: monospace; font-size: 16px;">{role_label_cap}</span></p>
+                </div>
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #856404;">Pour des raisons de securite, nous vous recommandons de modifier votre mot de passe des votre premiere connexion.</p>
+                </div>
+                """
+            else:
+                credentials_block = f"""
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Votre compte existant sur la plateforme {cls.JOURNAL_NAME} a recu le role d'<strong>{role_label}</strong>. Vous pouvez desormais acceder aux fonctionnalites d'evaluation avec vos identifiants habituels.
+                </p>
+                """
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Cher(e) <strong>{full_name}</strong>,
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Nous avons le plaisir de vous informer que vous avez ete enrole(e) en tant qu'<strong>{role_label}</strong> pour {cls.JOURNAL_NAME}.
+                </p>
+                {credentials_block}
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Se connecter
+                    </a>
+                </div>
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Cordialement,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">L'equipe editoriale de {cls.JOURNAL_NAME}</strong>
+                </p>
+            </div>
+            """
+            body = cls._get_base_template(f"Enrolement - {role_label_cap}", content)
+        else:
+            role_label = "internal reviewer" if is_internal else "external reviewer"
+            role_label_cap = "Internal reviewer" if is_internal else "External reviewer"
+            subject = f"You have been enrolled as an {role_label} - {cls.JOURNAL_NAME}"
+            credentials_block = ""
+            if has_credentials:
+                credentials_block = f"""
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    An account has been created for you on our manuscript management platform. Below are your login credentials:
+                </p>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Email:</strong><br>
+                        <span style="color: {cls.PRIMARY_COLOR}; font-family: monospace; font-size: 16px;">{login_email}</span></p>
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Password:</strong><br>
+                        <span style="color: {cls.PRIMARY_COLOR}; font-family: monospace; font-size: 16px;">{password}</span></p>
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Role:</strong><br>
+                        <span style="color: {cls.PRIMARY_COLOR}; font-family: monospace; font-size: 16px;">{role_label_cap}</span></p>
+                </div>
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #856404;">For security reasons, we recommend that you change your password upon your first login.</p>
+                </div>
+                """
+            else:
+                credentials_block = f"""
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Your existing account on the {cls.JOURNAL_NAME} platform has been granted the <strong>{role_label}</strong> role. You may now access the review features with your usual credentials.
+                </p>
+                """
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">
+                    Dear <strong>{full_name}</strong>,
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    We are pleased to inform you that you have been enrolled as an <strong>{role_label}</strong> for {cls.JOURNAL_NAME}.
+                </p>
+                {credentials_block}
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                        Log In
+                    </a>
+                </div>
+                <p style="font-size: 15px; margin-top: 25px;">
+                    Best regards,<br>
+                    <strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of {cls.JOURNAL_NAME}</strong>
+                </p>
+            </div>
+            """
+            body = cls._get_base_template(f"Enrollment - {role_label_cap}", content)
+
+        return cls.send_email(to_email, subject, body)
+
     #====================================
     # EMAILS NOTIFICATIONS ÉVALUATEUR
     #====================================
