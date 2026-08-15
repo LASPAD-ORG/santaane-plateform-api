@@ -12,6 +12,8 @@ from typing import Optional
 from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
 from app.models.manuscript import Manuscript
 from app.models.user import User
+from app.models.role import Role
+from app.models.user_role import UserRole
 from app.models.manuscript_evaluator_link import ManuscriptEvaluatorLink
 from app.models.enums import EvaluatorAssignmentStatus, ManuscriptEvaluationStatus
 from app.models.manuscript_annotation import ManuscriptAnnotation
@@ -414,6 +416,33 @@ class EvaluationGridService:
                     
         except Exception as e:
             logger.error(f"Failed to send evaluation submitted notification: {str(e)}")
+
+        # Notifier tous les editeurs de la plateforme (evaluation interne ou externe)
+        try:
+            editors_query = (
+                select(User)
+                .join(UserRole, UserRole.user_id == User.id)
+                .join(Role, Role.id == UserRole.role_id)
+                .where(and_(Role.name == "EDITOR", User.is_active == True))
+                .distinct()
+            )
+            editors_result = await self.db.execute(editors_query)
+            editors = editors_result.scalars().all()
+            logger.info(f"Notifying {len(editors)} editor(s) of submitted evaluation for manuscript {manuscript_id}")
+            for editor in editors:
+                try:
+                    EmailService.send_evaluation_completed_to_editor(
+                        to_email=str(editor.email),
+                        editor_name=str(editor.full_name),
+                        manuscript_title=manuscript.title if manuscript else f"Manuscrit #{manuscript_id}",
+                        evaluator_name=evaluator.full_name if evaluator else "Evaluateur",
+                        evaluation_decision=grid.recommendation or "Non specifie",
+                        lang="fr",
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to notify editor {editor.email}: {str(e)}")
+        except Exception as e:
+            logger.error(f"Failed to fetch/notify editors: {str(e)}")
 
         # Count annotations
         annotations_query = select(ManuscriptAnnotation).where(

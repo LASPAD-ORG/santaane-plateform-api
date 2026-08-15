@@ -2060,6 +2060,64 @@ class EmailService:
         
         return cls.send_email(to_email=to_email, subject=subject, body=body, is_html=True)
 
+    @classmethod
+    def send_evaluation_completed_to_editor(
+        cls,
+        to_email: str,
+        editor_name: str,
+        manuscript_title: str,
+        evaluator_name: str,
+        evaluation_decision: str,
+        lang: str = "fr",
+    ) -> bool:
+        """Notifie un editeur qu'une evaluation vient d'etre soumise pour un manuscrit."""
+        is_fr = cls._is_french(lang)
+
+        if is_fr:
+            subject = f"Nouvelle evaluation soumise - {manuscript_title[:60]}"
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">Cher(e) <strong>{editor_name}</strong>,</p>
+                <div style="background: #e8f5f3; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px;"><strong>Une nouvelle evaluation vient d'etre soumise.</strong></p>
+                </div>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Manuscrit :</strong> {manuscript_title}</p>
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Evaluateur :</strong> {evaluator_name}</p>
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Recommandation :</strong> {evaluation_decision}</p>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6;">Vous pouvez consulter l'evaluation sur la plateforme.</p>
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">Acceder a la plateforme</a>
+                </div>
+                <p style="font-size: 15px; margin-top: 25px;">Cordialement,<br><strong style="color: {cls.PRIMARY_COLOR};">L'equipe editoriale de {cls.JOURNAL_NAME}</strong></p>
+            </div>
+            """
+            body = cls._get_base_template("Nouvelle evaluation soumise", content)
+        else:
+            subject = f"New evaluation submitted - {manuscript_title[:60]}"
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">Dear <strong>{editor_name}</strong>,</p>
+                <div style="background: #e8f5f3; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <p style="margin: 0; font-size: 16px;"><strong>A new evaluation has just been submitted.</strong></p>
+                </div>
+                <div style="background: #f8f9fa; border-left: 4px solid {cls.PRIMARY_COLOR}; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Manuscript:</strong> {manuscript_title}</p>
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Evaluator:</strong> {evaluator_name}</p>
+                    <p style="margin: 8px 0; font-size: 14px;"><strong>Recommendation:</strong> {evaluation_decision}</p>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6;">You can review the evaluation on the platform.</p>
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">Access the platform</a>
+                </div>
+                <p style="font-size: 15px; margin-top: 25px;">Best regards,<br><strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of {cls.JOURNAL_NAME}</strong></p>
+            </div>
+            """
+            body = cls._get_base_template("New evaluation submitted", content)
+
+        return cls.send_email(to_email, subject, body)
+
     #============
     # MAIL FOR SYSTEM
     #============
