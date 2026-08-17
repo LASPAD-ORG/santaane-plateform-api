@@ -156,3 +156,12 @@ class ManuscriptEvaluationStatusResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ValidateEvaluationsRequest(BaseModel):
+    """Schema pour la validation globale des evaluations d'un manuscrit par l'editeur."""
+    editorMessage: Optional[str] = Field(
+        default=None,
+        max_length=5000,
+        description="Message d'accompagnement facultatif transmis a l'auteur"
+    )

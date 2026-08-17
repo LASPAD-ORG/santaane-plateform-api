@@ -145,6 +145,23 @@ class Manuscript(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "[Manuscript.internally_validated_by_id]"}
     )
 
+    evaluations_validated: bool = Field(
+        default=False,
+        nullable=False,
+        index=True,
+        description="True si l'editeur a valide les evaluations pour transmission a l'auteur",
+    )
+    evaluations_validated_at: Optional[datetime] = Field(default=None)
+    evaluations_validated_by_id: Optional[int] = Field(
+        default=None,
+        foreign_key="users.id",
+        description="ID de l'editeur qui a valide les evaluations",
+    )
+    evaluations_editor_message: Optional[str] = Field(default=None)
+    evaluations_validated_by: Optional["User"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[Manuscript.evaluations_validated_by_id]"}
+    )
+
     editorial_versions: List["EditorialVersion"] = Relationship(
         back_populates="manuscript",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}

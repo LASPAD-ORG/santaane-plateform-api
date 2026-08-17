@@ -129,6 +129,8 @@ class ManuscriptResponse(BaseModel):
     anonymizedAt: Optional[datetime] = None
     anonymizedByName: Optional[str] = None
     isInternallyValidated: bool = Field(default=False)
+    evaluationsValidated: bool = Field(default=False)
+    evaluationsValidatedAt: Optional[datetime] = None
     createdAt: datetime
     updatedAt: datetime
 
@@ -158,6 +160,8 @@ class ManuscriptDetailResponse(BaseModel):
     anonymizedAt: Optional[datetime] = None
     anonymizedByName: Optional[str] = None
     isInternallyValidated: bool = Field(default=False)
+    evaluationsValidated: bool = Field(default=False)
+    evaluationsValidatedAt: Optional[datetime] = None
     createdAt: datetime
     updatedAt: datetime
 

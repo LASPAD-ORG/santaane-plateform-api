@@ -2118,6 +2118,70 @@ class EmailService:
 
         return cls.send_email(to_email, subject, body)
 
+    @classmethod
+    def send_evaluations_available_to_author(
+        cls,
+        to_email: str,
+        author_name: str,
+        manuscript_title: str,
+        editor_message: str = None,
+        lang: str = "fr",
+    ) -> bool:
+        """Notifie l'auteur que ses evaluations ont ete validees par l'editeur et sont disponibles."""
+        is_fr = cls._is_french(lang)
+        has_message = editor_message is not None and str(editor_message).strip() != ""
+
+        if is_fr:
+            subject = f"Vos evaluations sont disponibles - {manuscript_title[:60]}"
+            message_block = ""
+            if has_message:
+                message_block = f"""
+                <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #856404;">Message de l'equipe editoriale :</p>
+                    <p style="margin: 0; font-size: 14px; color: #856404; white-space: pre-wrap;">{editor_message}</p>
+                </div>
+                """
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">Cher(e) <strong>{author_name}</strong>,</p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    Les evaluations de votre manuscrit <strong>&laquo; {manuscript_title} &raquo;</strong> ont ete validees par l'equipe editoriale et sont desormais disponibles sur la plateforme.
+                </p>
+                {message_block}
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">Consulter les evaluations</a>
+                </div>
+                <p style="font-size: 15px; margin-top: 25px;">Cordialement,<br><strong style="color: {cls.PRIMARY_COLOR};">L'equipe editoriale de {cls.JOURNAL_NAME}</strong></p>
+            </div>
+            """
+            body = cls._get_base_template("Vos evaluations sont disponibles", content)
+        else:
+            subject = f"Your evaluations are available - {manuscript_title[:60]}"
+            message_block = ""
+            if has_message:
+                message_block = f"""
+                <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #856404;">Message from the editorial team:</p>
+                    <p style="margin: 0; font-size: 14px; color: #856404; white-space: pre-wrap;">{editor_message}</p>
+                </div>
+                """
+            content = f"""
+            <div style="color: #333;">
+                <p style="font-size: 18px; margin-bottom: 25px;">Dear <strong>{author_name}</strong>,</p>
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+                    The evaluations of your manuscript <strong>&laquo; {manuscript_title} &raquo;</strong> have been validated by the editorial team and are now available on the platform.
+                </p>
+                {message_block}
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, {cls.PRIMARY_COLOR} 0%, {cls.PRIMARY_COLOR_DARK} 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">View evaluations</a>
+                </div>
+                <p style="font-size: 15px; margin-top: 25px;">Best regards,<br><strong style="color: {cls.PRIMARY_COLOR};">The Editorial Team of {cls.JOURNAL_NAME}</strong></p>
+            </div>
+            """
+            body = cls._get_base_template("Your evaluations are available", content)
+
+        return cls.send_email(to_email, subject, body)
+
     #============
     # MAIL FOR SYSTEM
     #============

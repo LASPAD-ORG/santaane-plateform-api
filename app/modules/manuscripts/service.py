@@ -459,6 +459,8 @@ class ManuscriptService:
                     coauthors=coauthor_responses,
                     isAnonymized=manuscript.is_anonymized,
                     isInternallyValidated=manuscript.is_internally_validated,
+            evaluationsValidated=getattr(manuscript, 'evaluations_validated', False),
+            evaluationsValidatedAt=getattr(manuscript, 'evaluations_validated_at', None),
                     createdAt=manuscript.created_at,
                     updatedAt=manuscript.updated_at
                 )
@@ -535,6 +537,9 @@ class ManuscriptService:
                 institution=author.institution
             ),
             coauthors=coauthor_responses,
+            isInternallyValidated=getattr(manuscript, 'is_internally_validated', False),
+            evaluationsValidated=getattr(manuscript, 'evaluations_validated', False),
+            evaluationsValidatedAt=getattr(manuscript, 'evaluations_validated_at', None),
             createdAt=manuscript.created_at,
             updatedAt=manuscript.updated_at
         )
@@ -596,6 +601,8 @@ class ManuscriptService:
             coauthors=coauthor_responses,
             isAnonymized=manuscript.is_anonymized,
             isInternallyValidated=manuscript.is_internally_validated,
+            evaluationsValidated=getattr(manuscript, 'evaluations_validated', False),
+            evaluationsValidatedAt=getattr(manuscript, 'evaluations_validated_at', None),
             createdAt=manuscript.created_at,
             updatedAt=manuscript.updated_at
         )

@@ -278,6 +278,16 @@ def require_editor_or_manuscript_author(manuscript_id: int) -> Callable:
                 )
 
             if manuscript.author_id == current_user.id:
+                # Garde-fou : l'auteur ne voit les evaluations qu'apres validation editoriale
+                if not getattr(manuscript, "evaluations_validated", False):
+                    logger.info(
+                        f"AUTHOR access denied - evaluations not yet validated "
+                        f"(manuscript {manuscript_id}): {current_user.email}"
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Les evaluations sont en cours de validation par l'editeur et ne sont pas encore disponibles."
+                    )
                 logger.info(f"AUTHOR access granted (owns manuscript {manuscript_id}): {current_user.email}")
                 return current_user
 

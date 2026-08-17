@@ -13,7 +13,8 @@ from app.modules.manuscripts.evaluation_grid_schemas import (
     SaveEvaluationGridRequest,
     EvaluationGridResponse,
     SubmitEvaluationResponse,
-    ManuscriptEvaluationStatusResponse
+    ManuscriptEvaluationStatusResponse,
+    ValidateEvaluationsRequest
 )
 
 
@@ -172,4 +173,61 @@ async def get_evaluation_grid_by_evaluator_endpoint(
     return await service.get_evaluation_grid(
         manuscript_id=manuscript_id,
         evaluator_id=evaluator_id
+    )
+
+
+@router.put(
+    "/{manuscript_id}/evaluator/{evaluator_id}/evaluation-grid",
+    response_model=EvaluationGridResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_any_role(UserRole.EDITOR, UserRole.SUPER_ADMIN))],
+    summary="Editor updates an evaluator's grid",
+    description="Allow an editor to modify a submitted evaluation grid before transmission to the author"
+)
+async def editor_update_evaluation_grid_endpoint(
+    manuscript_id: int,
+    evaluator_id: int,
+    data: SaveEvaluationGridRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Editor modifies an evaluator's grid before it is transmitted to the author.
+    - **manuscript_id**: ID of the manuscript
+    - **evaluator_id**: ID of the evaluator whose grid is edited
+    - Editable even if already submitted (submitted_at is preserved)
+    - Requires EDITOR or SUPER_ADMIN role
+    """
+    service = EvaluationGridService(db)
+    return await service.editor_update_grid(
+        manuscript_id=manuscript_id,
+        evaluator_id=evaluator_id,
+        data=data
+    )
+
+
+@router.post(
+    "/{manuscript_id}/validate-evaluations",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_any_role(UserRole.EDITOR, UserRole.SUPER_ADMIN))],
+    summary="Validate all evaluations of a manuscript (make them visible to the author)",
+    description="Editor validates the evaluations globally and transmits them to the author, with an optional accompanying message"
+)
+async def validate_manuscript_evaluations_endpoint(
+    manuscript_id: int,
+    data: ValidateEvaluationsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Validate a manuscript's evaluations so they become visible to the author.
+    - Sets evaluations_validated = True
+    - Sends an email to the author (evaluations available)
+    - Requires EDITOR or SUPER_ADMIN role
+    """
+    service = EvaluationGridService(db)
+    return await service.validate_manuscript_evaluations(
+        manuscript_id=manuscript_id,
+        editor_id=current_user.id,
+        editor_message=data.editorMessage
     )

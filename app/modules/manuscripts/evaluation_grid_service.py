@@ -277,6 +277,69 @@ class EvaluationGridService:
             submittedAt=grid_to_return.submitted_at
         )
 
+    async def editor_update_grid(
+        self,
+        manuscript_id: int,
+        evaluator_id: int,
+        data: SaveEvaluationGridRequest
+    ) -> EvaluationGridResponse:
+        """Permet a l'editeur de modifier une grille MEME deja soumise (sans toucher submitted_at)."""
+        logger.info(f"Editor updating grid for manuscript {manuscript_id}, evaluator {evaluator_id}")
+
+        query = select(ManuscriptEvaluationGrid).where(
+            and_(
+                ManuscriptEvaluationGrid.manuscript_id == manuscript_id,
+                ManuscriptEvaluationGrid.evaluator_id == evaluator_id
+            )
+        )
+        result = await self.db.execute(query)
+        grid = result.scalar_one_or_none()
+        if grid is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Grille d'evaluation introuvable pour cet evaluateur"
+            )
+
+        grid.originality_of_ideas = data.originalityOfIdeas or ""
+        grid.methodology_rigor = data.methodologyRigor or ""
+        grid.theoretical_approach = data.theoreticalApproach or ""
+        grid.presentation_clarity = data.presentationClarity or ""
+        grid.strengths = data.strengths or ""
+        grid.weaknesses = data.weaknesses or ""
+        grid.suggestions = data.suggestions if data.suggestions else None
+        grid.editorial_line_fit = data.editorialLineFit
+        grid.global_opinion = data.globalOpinion
+        grid.recommendation = data.recommendation
+        grid.updated_at = datetime.utcnow()
+        # submitted_at INCHANGE : la grille reste soumise
+
+        self.db.add(grid)
+        await self.db.commit()
+        await self.db.refresh(grid)
+
+        manuscript = await self.db.get(Manuscript, manuscript_id)
+        evaluator = await self.db.get(User, evaluator_id)
+        return EvaluationGridResponse(
+            id=grid.id,
+            manuscriptId=grid.manuscript_id,
+            evaluatorId=grid.evaluator_id,
+            articleTitle=manuscript.title if manuscript else "",
+            evaluatorName=evaluator.full_name if evaluator else "",
+            originalityOfIdeas=grid.originality_of_ideas,
+            methodologyRigor=grid.methodology_rigor,
+            theoreticalApproach=grid.theoretical_approach,
+            presentationClarity=grid.presentation_clarity,
+            strengths=grid.strengths,
+            weaknesses=grid.weaknesses,
+            suggestions=grid.suggestions or "",
+            editorialLineFit=grid.editorial_line_fit,
+            globalOpinion=grid.global_opinion,
+            recommendation=grid.recommendation,
+            createdAt=grid.created_at,
+            updatedAt=grid.updated_at,
+            submittedAt=grid.submitted_at
+        )
+
     async def submit_evaluation(
         self,
         manuscript_id: int,
@@ -525,3 +588,49 @@ class EvaluationGridService:
             isFullyEvaluated=is_fully_evaluated,
             progress=round(progress, 2)
         )
+
+    async def validate_manuscript_evaluations(
+        self,
+        manuscript_id: int,
+        editor_id: int,
+        editor_message: Optional[str] = None,
+    ) -> dict:
+        """Valide globalement les evaluations d'un manuscrit (visibles par l'auteur) + email auteur."""
+        manuscript = await self.db.get(Manuscript, manuscript_id)
+        if manuscript is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Manuscrit introuvable"
+            )
+
+        manuscript.evaluations_validated = True
+        manuscript.evaluations_validated_at = datetime.utcnow()
+        manuscript.evaluations_validated_by_id = editor_id
+        manuscript.evaluations_editor_message = editor_message
+        self.db.add(manuscript)
+        await self.db.commit()
+        await self.db.refresh(manuscript)
+
+        logger.info(f"Evaluations validated for manuscript {manuscript_id} by editor {editor_id}")
+
+        # Notifier l'auteur que ses evaluations sont disponibles
+        try:
+            author = await self.db.get(User, manuscript.author_id)
+            if author and author.email:
+                EmailService.send_evaluations_available_to_author(
+                    to_email=str(author.email),
+                    author_name=str(author.full_name),
+                    manuscript_title=manuscript.title,
+                    editor_message=editor_message,
+                    lang="fr",
+                )
+                logger.info(f"Author {author.email} notified of available evaluations")
+        except Exception as e:
+            logger.error(f"Failed to notify author for manuscript {manuscript_id}: {str(e)}")
+
+        return {
+            "manuscriptId": manuscript_id,
+            "validated": True,
+            "validatedAt": manuscript.evaluations_validated_at,
+            "message": "Evaluations validees et transmises a l'auteur"
+        }
