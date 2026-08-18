@@ -26,6 +26,9 @@ from app.models.manuscript import Manuscript
 from app.models.manuscript_attachment import ManuscriptAttachment
 from app.models.attachment_request import AttachmentRequest
 from app.modules.auth.repository import AuthRepository
+from app.core.email import EmailService
+from app.models.role import Role
+from app.models.user_role import UserRole as UserRoleModel
 
 logger = get_logger(__name__)
 
@@ -89,6 +92,35 @@ async def _resolve_role(db: AsyncSession, user: User, manuscript: Manuscript) ->
     if UserRole.AUTHOR.value in roles and manuscript.author_id == user.id:
         return "author"
     return "other"
+
+
+async def _notify_editors_attachment(db: AsyncSession, manuscript: Manuscript, attachment_title: str, author_name: str, description: str = None):
+    """Notifie tous les editeurs actifs qu'une piece a ete deposee par l'auteur."""
+    try:
+        query = (
+            select(User)
+            .join(UserRoleModel, UserRoleModel.user_id == User.id)
+            .join(Role, Role.id == UserRoleModel.role_id)
+            .where(and_(Role.name == "EDITOR", User.is_active == True))
+            .distinct()
+        )
+        result = await db.execute(query)
+        editors = result.scalars().all()
+        for editor in editors:
+            try:
+                EmailService.send_attachment_uploaded_to_editor(
+                    to_email=str(editor.email),
+                    editor_name=str(editor.full_name),
+                    manuscript_title=manuscript.title,
+                    attachment_title=attachment_title,
+                    author_name=author_name,
+                    attachment_description=description,
+                    lang="fr",
+                )
+            except Exception as e:
+                logger.error(f"Failed to notify editor {editor.email} of attachment: {str(e)}")
+    except Exception as e:
+        logger.error(f"Failed to fetch editors for attachment notification: {str(e)}")
 
 
 def _to_attachment_response(att: ManuscriptAttachment) -> AttachmentResponse:
@@ -188,6 +220,30 @@ async def upload_attachment(
             req.fulfilled_at = datetime.utcnow()
             db.add(req)
             await db.commit()
+
+    # Notifications email
+    try:
+        if role == "author":
+            # L'auteur depose -> notifier tous les editeurs
+            await _notify_editors_attachment(
+                db, manuscript, title, str(current_user.full_name),
+                description if description else None
+            )
+        elif role == "editor" and vis:
+            # L'editeur transmet une piece visible -> notifier l'auteur
+            author = await db.get(User, manuscript.author_id)
+            if author and author.email:
+                EmailService.send_attachment_transmitted_to_author(
+                    to_email=str(author.email),
+                    author_name=str(author.full_name),
+                    manuscript_title=manuscript.title,
+                    attachment_title=title,
+                    attachment_description=description if description else None,
+                    lang="fr",
+                )
+        # role editor + piece interne (vis=False) -> aucune notification
+    except Exception as e:
+        logger.error(f"Attachment notification failed: {str(e)}")
 
     logger.info(f"Attachment {attachment.id} uploaded on manuscript {manuscript_id} by {role} {current_user.email}")
     return _to_attachment_response(attachment)
@@ -327,6 +383,21 @@ async def create_attachment_request(
     db.add(req)
     await db.commit()
     await db.refresh(req)
+    # Notifier l'auteur de la demande
+    try:
+        author = await db.get(User, manuscript.author_id)
+        if author and author.email:
+            EmailService.send_attachment_request_to_author(
+                to_email=str(author.email),
+                author_name=str(author.full_name),
+                manuscript_title=manuscript.title,
+                request_title=req.title,
+                request_description=req.description,
+                lang="fr",
+            )
+    except Exception as e:
+        logger.error(f"Failed to notify author of attachment request: {str(e)}")
+
     logger.info(f"Attachment request {req.id} created on manuscript {manuscript_id} by editor {current_user.email}")
     return _to_request_response(req)
 

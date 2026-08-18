@@ -2182,6 +2182,140 @@ class EmailService:
 
         return cls.send_email(to_email, subject, body)
 
+    @classmethod
+    def send_attachment_request_to_author(
+        cls, to_email: str, author_name: str, manuscript_title: str,
+        request_title: str, request_description: str = None, lang: str = "fr",
+    ) -> bool:
+        """Notifie l'auteur qu'un editeur demande une piece jointe."""
+        desc_fr = f"<p style=\"margin:8px 0;font-size:14px;\"><strong>Precisions :</strong> {request_description}</p>" if request_description else ""
+        desc_en = f"<p style=\"margin:8px 0;font-size:14px;\"><strong>Details:</strong> {request_description}</p>" if request_description else ""
+        if cls._is_french(lang):
+            subject = f"Piece demandee - {manuscript_title[:55]}"
+            content = f"""
+            <div style="color:#333;">
+                <p style="font-size:18px;margin-bottom:25px;">Cher(e) <strong>{author_name}</strong>,</p>
+                <p style="font-size:15px;line-height:1.6;">L'equipe editoriale vous demande de fournir une piece jointe pour votre manuscrit <strong>&laquo; {manuscript_title} &raquo;</strong>.</p>
+                <div style="background:#f8f9fa;border-left:4px solid {cls.PRIMARY_COLOR};padding:20px;border-radius:8px;margin:25px 0;">
+                    <p style="margin:8px 0;font-size:14px;"><strong>Piece demandee :</strong> {request_title}</p>
+                    {desc_fr}
+                </div>
+                <div style="text-align:center;margin:35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display:inline-block;padding:15px 40px;background:linear-gradient(135deg,{cls.PRIMARY_COLOR} 0%,{cls.PRIMARY_COLOR_DARK} 100%);color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">Deposer la piece</a>
+                </div>
+                <p style="font-size:15px;margin-top:25px;">Cordialement,<br><strong style="color:{cls.PRIMARY_COLOR};">L'equipe editoriale de {cls.JOURNAL_NAME}</strong></p>
+            </div>
+            """
+            body = cls._get_base_template("Piece demandee", content)
+        else:
+            subject = f"Document requested - {manuscript_title[:55]}"
+            content = f"""
+            <div style="color:#333;">
+                <p style="font-size:18px;margin-bottom:25px;">Dear <strong>{author_name}</strong>,</p>
+                <p style="font-size:15px;line-height:1.6;">The editorial team requests a document for your manuscript <strong>&laquo; {manuscript_title} &raquo;</strong>.</p>
+                <div style="background:#f8f9fa;border-left:4px solid {cls.PRIMARY_COLOR};padding:20px;border-radius:8px;margin:25px 0;">
+                    <p style="margin:8px 0;font-size:14px;"><strong>Requested document:</strong> {request_title}</p>
+                    {desc_en}
+                </div>
+                <div style="text-align:center;margin:35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display:inline-block;padding:15px 40px;background:linear-gradient(135deg,{cls.PRIMARY_COLOR} 0%,{cls.PRIMARY_COLOR_DARK} 100%);color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">Upload document</a>
+                </div>
+                <p style="font-size:15px;margin-top:25px;">Best regards,<br><strong style="color:{cls.PRIMARY_COLOR};">The Editorial Team of {cls.JOURNAL_NAME}</strong></p>
+            </div>
+            """
+            body = cls._get_base_template("Document requested", content)
+        return cls.send_email(to_email, subject, body)
+
+    @classmethod
+    def send_attachment_transmitted_to_author(
+        cls, to_email: str, author_name: str, manuscript_title: str,
+        attachment_title: str, attachment_description: str = None, lang: str = "fr",
+    ) -> bool:
+        """Notifie l'auteur qu'une piece lui a ete transmise par l'editeur."""
+        desc_fr = f"<p style=\"margin:8px 0;font-size:14px;\"><strong>Description :</strong> {attachment_description}</p>" if attachment_description else ""
+        desc_en = f"<p style=\"margin:8px 0;font-size:14px;\"><strong>Description:</strong> {attachment_description}</p>" if attachment_description else ""
+        if cls._is_french(lang):
+            subject = f"Piece transmise - {manuscript_title[:55]}"
+            content = f"""
+            <div style="color:#333;">
+                <p style="font-size:18px;margin-bottom:25px;">Cher(e) <strong>{author_name}</strong>,</p>
+                <p style="font-size:15px;line-height:1.6;">L'equipe editoriale vous a transmis une piece jointe concernant votre manuscrit <strong>&laquo; {manuscript_title} &raquo;</strong>.</p>
+                <div style="background:#f8f9fa;border-left:4px solid {cls.PRIMARY_COLOR};padding:20px;border-radius:8px;margin:25px 0;">
+                    <p style="margin:8px 0;font-size:14px;"><strong>Piece :</strong> {attachment_title}</p>
+                    {desc_fr}
+                </div>
+                <div style="text-align:center;margin:35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display:inline-block;padding:15px 40px;background:linear-gradient(135deg,{cls.PRIMARY_COLOR} 0%,{cls.PRIMARY_COLOR_DARK} 100%);color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">Consulter la piece</a>
+                </div>
+                <p style="font-size:15px;margin-top:25px;">Cordialement,<br><strong style="color:{cls.PRIMARY_COLOR};">L'equipe editoriale de {cls.JOURNAL_NAME}</strong></p>
+            </div>
+            """
+            body = cls._get_base_template("Piece transmise", content)
+        else:
+            subject = f"Document shared - {manuscript_title[:55]}"
+            content = f"""
+            <div style="color:#333;">
+                <p style="font-size:18px;margin-bottom:25px;">Dear <strong>{author_name}</strong>,</p>
+                <p style="font-size:15px;line-height:1.6;">The editorial team shared a document regarding your manuscript <strong>&laquo; {manuscript_title} &raquo;</strong>.</p>
+                <div style="background:#f8f9fa;border-left:4px solid {cls.PRIMARY_COLOR};padding:20px;border-radius:8px;margin:25px 0;">
+                    <p style="margin:8px 0;font-size:14px;"><strong>Document:</strong> {attachment_title}</p>
+                    {desc_en}
+                </div>
+                <div style="text-align:center;margin:35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display:inline-block;padding:15px 40px;background:linear-gradient(135deg,{cls.PRIMARY_COLOR} 0%,{cls.PRIMARY_COLOR_DARK} 100%);color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">View document</a>
+                </div>
+                <p style="font-size:15px;margin-top:25px;">Best regards,<br><strong style="color:{cls.PRIMARY_COLOR};">The Editorial Team of {cls.JOURNAL_NAME}</strong></p>
+            </div>
+            """
+            body = cls._get_base_template("Document shared", content)
+        return cls.send_email(to_email, subject, body)
+
+    @classmethod
+    def send_attachment_uploaded_to_editor(
+        cls, to_email: str, editor_name: str, manuscript_title: str,
+        attachment_title: str, author_name: str, attachment_description: str = None, lang: str = "fr",
+    ) -> bool:
+        """Notifie un editeur que l'auteur a depose une piece jointe."""
+        desc_fr = f"<p style=\"margin:8px 0;font-size:14px;\"><strong>Description :</strong> {attachment_description}</p>" if attachment_description else ""
+        desc_en = f"<p style=\"margin:8px 0;font-size:14px;\"><strong>Description:</strong> {attachment_description}</p>" if attachment_description else ""
+        if cls._is_french(lang):
+            subject = f"Nouvelle piece deposee - {manuscript_title[:50]}"
+            content = f"""
+            <div style="color:#333;">
+                <p style="font-size:18px;margin-bottom:25px;">Cher(e) <strong>{editor_name}</strong>,</p>
+                <p style="font-size:15px;line-height:1.6;">L'auteur a depose une piece jointe pour le manuscrit <strong>&laquo; {manuscript_title} &raquo;</strong>.</p>
+                <div style="background:#f8f9fa;border-left:4px solid {cls.PRIMARY_COLOR};padding:20px;border-radius:8px;margin:25px 0;">
+                    <p style="margin:8px 0;font-size:14px;"><strong>Piece :</strong> {attachment_title}</p>
+                    <p style="margin:8px 0;font-size:14px;"><strong>Depose par :</strong> {author_name}</p>
+                    {desc_fr}
+                </div>
+                <div style="text-align:center;margin:35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display:inline-block;padding:15px 40px;background:linear-gradient(135deg,{cls.PRIMARY_COLOR} 0%,{cls.PRIMARY_COLOR_DARK} 100%);color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">Acceder a la plateforme</a>
+                </div>
+                <p style="font-size:15px;margin-top:25px;">Cordialement,<br><strong style="color:{cls.PRIMARY_COLOR};">L'equipe editoriale de {cls.JOURNAL_NAME}</strong></p>
+            </div>
+            """
+            body = cls._get_base_template("Nouvelle piece deposee", content)
+        else:
+            subject = f"New document uploaded - {manuscript_title[:50]}"
+            content = f"""
+            <div style="color:#333;">
+                <p style="font-size:18px;margin-bottom:25px;">Dear <strong>{editor_name}</strong>,</p>
+                <p style="font-size:15px;line-height:1.6;">The author uploaded a document for manuscript <strong>&laquo; {manuscript_title} &raquo;</strong>.</p>
+                <div style="background:#f8f9fa;border-left:4px solid {cls.PRIMARY_COLOR};padding:20px;border-radius:8px;margin:25px 0;">
+                    <p style="margin:8px 0;font-size:14px;"><strong>Document:</strong> {attachment_title}</p>
+                    <p style="margin:8px 0;font-size:14px;"><strong>Uploaded by:</strong> {author_name}</p>
+                    {desc_en}
+                </div>
+                <div style="text-align:center;margin:35px 0;">
+                    <a href="{cls.PLATFORM_URL}/login" style="display:inline-block;padding:15px 40px;background:linear-gradient(135deg,{cls.PRIMARY_COLOR} 0%,{cls.PRIMARY_COLOR_DARK} 100%);color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">Access the platform</a>
+                </div>
+                <p style="font-size:15px;margin-top:25px;">Best regards,<br><strong style="color:{cls.PRIMARY_COLOR};">The Editorial Team of {cls.JOURNAL_NAME}</strong></p>
+            </div>
+            """
+            body = cls._get_base_template("New document uploaded", content)
+        return cls.send_email(to_email, subject, body)
+
     #============
     # MAIL FOR SYSTEM
     #============
