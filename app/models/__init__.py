@@ -19,6 +19,8 @@ from app.models.manuscript import Manuscript
 from app.models.manuscript_annotation import ManuscriptAnnotation
 from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
 from .editorial_version import EditorialVersion
+from app.models.attachment_request import AttachmentRequest
+from app.models.manuscript_attachment import ManuscriptAttachment
 from app.models.coauthor import Coauthor
 
 # Add all new models to this list and to __all__
@@ -39,6 +41,8 @@ __all__ = [
     "ManuscriptAnnotation",
     "ManuscriptEvaluationGrid",
     "EditorialVersion",
+    "AttachmentRequest",
+    "ManuscriptAttachment",
     "Coauthor",
     "ExternalEvaluatorProposal",
 ]
