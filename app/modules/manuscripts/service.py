@@ -640,6 +640,10 @@ class ManuscriptService:
                 detail=f"Manuscript can only be revised when status is 'revision_requested'. Current status: '{manuscript.status.value}'"
             )
 
+        # V3 : archiver la version courante AVANT tout ecrasement (fichiers + metadonnees + evaluations)
+        from app.modules.manuscripts.version_archive_service import archive_current_version
+        await archive_current_version(self.repository.session, manuscript)
+
         # Update fields if provided
         if revision_data.title is not None:
             manuscript.title = revision_data.title
@@ -732,6 +736,11 @@ class ManuscriptService:
                     order=c.order
                 ) for c in coauthors
             ]
+
+        # V3 : la nouvelle version doit etre re-traitee par l'editeur (re-anonymisation si besoin)
+        manuscript.is_anonymized = False
+        manuscript.anonymized_at = None
+        manuscript.anonymized_by_id = None
 
         # Update status to RE_SUBMITTED
         manuscript.status = ManuscriptStatus.RE_SUBMITTED

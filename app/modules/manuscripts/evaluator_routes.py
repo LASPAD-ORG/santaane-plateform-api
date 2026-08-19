@@ -214,3 +214,32 @@ async def validate_manuscript_internally(
         manuscript_id=manuscript_id,
         internal_evaluator_id=current_user.id,
     )
+
+
+@router.post(
+    "/{manuscript_id}/start-evaluation-cycle",
+    dependencies=[Depends(require_any_role(UserRole.EDITOR, UserRole.SUPER_ADMIN))],
+    summary="Start a new external evaluation cycle after resubmission"
+)
+async def start_evaluation_cycle(
+    manuscript_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Lance un nouveau cycle d'evaluation externe apres une resoumission.
+
+    **Requires:** EDITOR or SUPER_ADMIN role
+
+    - Le manuscrit doit etre en statut RE_SUBMITTED.
+    - Vide les grilles + annotations des evaluateurs externes (deja archivees).
+    - Conserve les evaluations internes.
+    - Passe le manuscrit en UNDER_REVIEW.
+    """
+    from app.modules.manuscripts.version_archive_service import start_new_evaluation_cycle
+    manuscript = await start_new_evaluation_cycle(db, manuscript_id, current_user.id)
+    return {
+        "success": True,
+        "manuscriptId": manuscript_id,
+        "status": manuscript.status.value,
+    }

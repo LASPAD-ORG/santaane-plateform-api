@@ -21,6 +21,9 @@ from app.models.manuscript_evaluation_grid import ManuscriptEvaluationGrid
 from .editorial_version import EditorialVersion
 from app.models.attachment_request import AttachmentRequest
 from app.models.manuscript_attachment import ManuscriptAttachment
+from app.models.manuscript_version import ManuscriptVersion
+from app.models.archived_evaluation_grid import ArchivedEvaluationGrid
+from app.models.archived_annotation import ArchivedAnnotation
 from app.models.coauthor import Coauthor
 
 # Add all new models to this list and to __all__
@@ -43,6 +46,9 @@ __all__ = [
     "EditorialVersion",
     "AttachmentRequest",
     "ManuscriptAttachment",
+    "ManuscriptVersion",
+    "ArchivedEvaluationGrid",
+    "ArchivedAnnotation",
     "Coauthor",
     "ExternalEvaluatorProposal",
 ]

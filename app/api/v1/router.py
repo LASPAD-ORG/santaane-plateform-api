@@ -14,6 +14,7 @@ from app.modules.manuscripts import evaluation_grid_routes
 from app.modules.manuscripts import redaction_routes
 from app.modules.manuscripts import editorial_routes # Import de votre nouvelle partie
 from app.modules.manuscripts import attachment_routes
+from app.modules.manuscripts import version_routes
 from app.modules.themes import router as themes_router
 from app.modules.languages import router as languages_router
 from app.modules.sections import router as sections_router
@@ -35,6 +36,7 @@ router.include_router(evaluation_grid_routes.router)
 router.include_router(redaction_routes.router)
 router.include_router(editorial_routes.router) # Inclusion de votre module éditorial
 router.include_router(attachment_routes.router)
+router.include_router(version_routes.router)
 router.include_router(proposal_routes.router)
 # --- Bloc Configuration & Dashboards ---
 router.include_router(themes_router)
