@@ -54,11 +54,6 @@ class EvaluatorAssignmentService:
             )
 
         # Gate 2 : un évaluateur EXTERNE exige la validation interne préalable
-        if kind == EvaluatorKind.EXTERNAL.value and not manuscript.is_internally_validated:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot assign external evaluator: manuscript must be internally validated first"
-            )
 
         evaluator_result = await self.db.execute(
             select(User).where(User.id == evaluator_id)
