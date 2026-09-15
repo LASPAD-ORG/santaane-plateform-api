@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB in bytes
     ALLOWED_FILE_TYPES: List[str] = ["pdf", "docx", "doc", "tex", "zip", "png", "jpg", "jpeg"]
 
+    # SMTP / Email (Brevo)
+    SMTP_SERVER: str = "smtp-relay.brevo.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    FROM_EMAIL: str = "communication@laspad.org"
+    FROM_NAME: str = "Global Africa Journal"
+
     @field_validator('CORS_ORIGINS', mode='before')
     @classmethod
     def parse_cors_origins(cls, v):

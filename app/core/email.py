@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
 from app.core.logging import get_logger
-from app.core.config import Settings
+from app.core.config import Settings, settings
 logger = get_logger(__name__)
 
 
@@ -17,12 +17,12 @@ class EmailService:
     DEFAULT_LANGUAGE = 'fr'
     
     # Configuration SMTP
-    SMTP_SERVER = "smtp.titan.email"
-    SMTP_PORT = 465
-    SMTP_USERNAME = "laspad-plateform@hamadouba.com"
-    SMTP_PASSWORD = "laspad-plateform"
-    FROM_EMAIL = "laspad-plateform@hamadouba.com"
-    FROM_NAME = "Global Africa Journal"
+    SMTP_SERVER = settings.SMTP_SERVER
+    SMTP_PORT = settings.SMTP_PORT
+    SMTP_USERNAME = settings.SMTP_USERNAME
+    SMTP_PASSWORD = settings.SMTP_PASSWORD
+    FROM_EMAIL = settings.FROM_EMAIL
+    FROM_NAME = settings.FROM_NAME
     PLATFORM_URL = "https://www.globalafricajournal.org"
     PRIMARY_COLOR = "#59a498"
     PRIMARY_COLOR_DARK = "#4a8a7f"
@@ -130,8 +130,11 @@ class EmailService:
                 message.attach(MIMEText(body, "plain"))
             logger.info(f"Connecting to SMTP server {cls.SMTP_SERVER}:{cls.SMTP_PORT}")
             try:
-                with smtplib.SMTP_SSL(cls.SMTP_SERVER, cls.SMTP_PORT, timeout=10) as server:
-                    logger.info("SMTP connection established, attempting login...")
+                with smtplib.SMTP(cls.SMTP_SERVER, cls.SMTP_PORT, timeout=10) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+                    logger.info("SMTP connection established (STARTTLS), attempting login...")
                     server.login(cls.SMTP_USERNAME, cls.SMTP_PASSWORD)
                     logger.info("SMTP login successful, sending email...")
                     server.sendmail(cls.FROM_EMAIL, recipients, message.as_string())
